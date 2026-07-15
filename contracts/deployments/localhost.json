@@ -1,0 +1,9 @@
+{
+  "network": "localhost",
+  "chainId": 4111,
+  "pethProxy": "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
+  "implementation": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
+  "treasury": "0xF4B6C206f7a6C4b59Ebe129C43Ea9592a03dc0cC",
+  "admin": "0x3e90435d3B3DEF3eFAEb9Fe136AF867470447788",
+  "deployedAt": "2026-04-13T06:05:00.066Z"
+}

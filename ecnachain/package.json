@@ -1,0 +1,16 @@
+{
+  "name": "ecnachain",
+  "private": true,
+  "version": "1.0.0",
+  "description": "E Canna L1 — Geth Clique PoA, chain ID 4111, 1 Crore (10M) ECNA genesis pre-mint",
+  "scripts": {
+    "clear-explorer-index": "npm run server:clear-indexed --prefix ..",
+    "send-native:rpc": "npm run send-native:rpc -w contracts --prefix ..",
+    "genesis:build": "node scripts/build-genesis.mjs",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f ecna-validator-1",
+    "docker:fullnode": "docker compose -f docker-compose.yml -f docker-compose.fullnode.yml up -d",
+    "docker:validators": "docker compose -f docker-compose.yml -f docker-compose.validator2.yml up -d"
+  }
+}

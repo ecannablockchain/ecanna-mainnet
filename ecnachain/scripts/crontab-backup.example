@@ -1,0 +1,3 @@
+# Example: nightly chaindata backup (Linux cron). Adjust paths.
+# crontab -e
+# 0 3 * * * BACKUP_DIR=/var/backups/ecna /path/to/ecnachain/scripts/backup-chain.sh /path/to/ecnachain/data/validator1 >> /var/log/ecna-backup.log 2>&1

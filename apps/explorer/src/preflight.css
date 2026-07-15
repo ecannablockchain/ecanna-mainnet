@@ -1,0 +1,12 @@
+/* Loads before Tailwind — base layout if build ever strips utilities */
+html {
+  -webkit-text-size-adjust: 100%;
+}
+html,
+body,
+#root {
+  min-height: 100%;
+}
+body {
+  margin: 0;
+}

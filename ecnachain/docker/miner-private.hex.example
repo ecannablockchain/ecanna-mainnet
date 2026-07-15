@@ -1,0 +1,2 @@
+﻿# Place miner private key here as 64 hex chars (no 0x). NEVER commit the real file.
+# Copy:  cp miner-private.hex.example miner-private.hex

@@ -1,0 +1,571 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ---- Theme tokens (Light = default) ---- */
+:root,
+html[data-theme="light"] {
+  --page-bg: #f8f9fa;
+  --topbar-bg: #ffffff;
+  --topbar-text: #6c757d;
+  --topbar-heading: #212529;
+  --topbar-border: #e9ecef;
+  --topbar-btn-bg: #f8f9fa;
+  --topbar-btn-hover: #e9ecef;
+  --nav-bg: #ffffff;
+  --nav-text: #212529;
+  --nav-border: #dee2e6;
+  --nav-link-hover-bg: #f8f9fa;
+  --dropdown-bg: #ffffff;
+  --dropdown-border: #dee2e6;
+  --dropdown-text: #212529;
+  --dropdown-hover: #f1f3f5;
+  --hero-input-bg: #ffffff;
+  --hero-input-text: #212529;
+  --hero-input-border: #ced4da;
+  --footer-bg: #06162d;
+  --footer-border: #0a2540;
+  --footer-bottom: #050d1a;
+  --card-bg: #ffffff;
+  --card-border: #dee2e6;
+  --card-muted: #6c757d;
+  --card-heading: #212529;
+}
+
+html[data-theme="dim"] {
+  --page-bg: #1a2332;
+  --topbar-bg: #1e2a3a;
+  --topbar-text: #94a3b8;
+  --topbar-heading: #f1f5f9;
+  --topbar-border: #2d3d52;
+  --topbar-btn-bg: #243044;
+  --topbar-btn-hover: #2d4158;
+  --nav-bg: #1e2a3a;
+  --nav-text: #e2e8f0;
+  --nav-border: #2d3d52;
+  --nav-link-hover-bg: #243044;
+  --dropdown-bg: #243044;
+  --dropdown-border: #334155;
+  --dropdown-text: #e2e8f0;
+  --dropdown-hover: #2d4158;
+  --hero-input-bg: #243044;
+  --hero-input-text: #f1f5f9;
+  --hero-input-border: #475569;
+  --footer-bg: #050d1a;
+  --footer-border: #0a2540;
+  --footer-bottom: #02060d;
+  --card-bg: #243044;
+  --card-border: #334155;
+  --card-muted: #94a3b8;
+  --card-heading: #f1f5f9;
+}
+
+html[data-theme="dark"] {
+  --page-bg: #0d1117;
+  --topbar-bg: #161b22;
+  --topbar-text: #8b949e;
+  --topbar-heading: #f0f6fc;
+  --topbar-border: #30363d;
+  --topbar-btn-bg: #21262d;
+  --topbar-btn-hover: #30363d;
+  --nav-bg: #161b22;
+  --nav-text: #e6edf3;
+  --nav-border: #30363d;
+  --nav-link-hover-bg: #21262d;
+  --dropdown-bg: #21262d;
+  --dropdown-border: #30363d;
+  --dropdown-text: #e6edf3;
+  --dropdown-hover: #30363d;
+  --hero-input-bg: #0d1117;
+  --hero-input-text: #f0f6fc;
+  --hero-input-border: #30363d;
+  --footer-bg: #010409;
+  --footer-border: #21262d;
+  --footer-bottom: #000000;
+  --card-bg: #161b22;
+  --card-border: #30363d;
+  --card-muted: #8b949e;
+  --card-heading: #f0f6fc;
+}
+
+body {
+  background: var(--page-bg);
+  color: var(--card-heading);
+  @apply antialiased;
+}
+
+.ecna-app {
+  background: var(--page-bg);
+  color: var(--card-heading);
+  transition: background-color 0.2s ease, color 0.15s ease;
+}
+
+/* Hero — slightly deeper in dim/dark */
+.es-hero,
+.pes-hero-pattern {
+  background-color: #06162d;
+  background-image:
+    radial-gradient(ellipse 100% 80% at 50% -30%, rgba(7, 132, 195, 0.14), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 50%, rgba(56, 189, 248, 0.08), transparent 50%),
+    radial-gradient(ellipse 50% 60% at 0% 80%, rgba(99, 102, 241, 0.06), transparent 45%),
+    repeating-linear-gradient(
+      105deg,
+      transparent 0,
+      transparent 11px,
+      rgba(148, 163, 184, 0.07) 11px,
+      rgba(148, 163, 184, 0.07) 12px
+    ),
+    repeating-linear-gradient(
+      -18deg,
+      transparent 0,
+      transparent 17px,
+      rgba(148, 163, 184, 0.05) 17px,
+      rgba(148, 163, 184, 0.05) 18px
+    );
+}
+
+html[data-theme="dim"] .es-hero,
+html[data-theme="dim"] .pes-hero-pattern {
+  background-color: #0a1628;
+}
+
+html[data-theme="dark"] .es-hero,
+html[data-theme="dark"] .pes-hero-pattern {
+  background-color: #010409;
+}
+
+.ecna-nav-link {
+  border-radius: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--nav-text);
+}
+.ecna-nav-link:hover {
+  background: var(--nav-link-hover-bg);
+  color: #0784c3;
+}
+
+/* Stat / panel cards on home — follow theme */
+.ecna-card {
+  border-radius: 0.5rem;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+}
+.ecna-card-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--card-muted);
+}
+.ecna-card-main {
+  margin-top: 0.375rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--card-heading);
+}
+.ecna-card-sub {
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  line-height: 1.375;
+  color: var(--card-muted);
+}
+
+.pes-table-wrap {
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
+  -webkit-overflow-scrolling: touch;
+}
+
+.pes-th {
+  @apply whitespace-nowrap px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide;
+  border-bottom: 1px solid var(--card-border);
+  background: var(--page-bg);
+  color: var(--card-muted);
+}
+
+.pes-td {
+  @apply px-3 py-2.5 align-middle text-sm;
+  border-bottom: 1px solid var(--card-border);
+  color: var(--card-heading);
+}
+
+.pes-link {
+  @apply font-mono text-xs text-brand-500 hover:text-brand-600 hover:underline;
+}
+
+.pes-pill {
+  @apply inline-flex rounded-md px-2 py-0.5 text-xs font-medium;
+  background: var(--page-bg);
+  color: var(--card-muted);
+}
+
+.pes-pill-in {
+  @apply inline-flex rounded px-1.5 py-0.5 text-[10px] font-bold uppercase text-emerald-800;
+  background: rgb(209 250 229);
+}
+
+html[data-theme="dim"] .pes-pill-in,
+html[data-theme="dark"] .pes-pill-in {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+
+/* Dim/Dark: remap common Tailwind utility combos inside app shell */
+[data-theme="dim"] .ecna-app .bg-white,
+[data-theme="dark"] .ecna-app .bg-white {
+  background-color: var(--card-bg) !important;
+}
+[data-theme="dim"] .ecna-app .bg-slate-50,
+[data-theme="dark"] .ecna-app .bg-slate-50 {
+  background-color: var(--page-bg) !important;
+}
+[data-theme="dim"] .ecna-app .bg-slate-100,
+[data-theme="dark"] .ecna-app .bg-slate-100 {
+  background-color: var(--nav-link-hover-bg) !important;
+}
+[data-theme="dim"] .ecna-app .text-slate-900,
+[data-theme="dark"] .ecna-app .text-slate-900 {
+  color: var(--card-heading) !important;
+}
+[data-theme="dim"] .ecna-app .text-slate-800,
+[data-theme="dark"] .ecna-app .text-slate-800 {
+  color: var(--card-heading) !important;
+}
+[data-theme="dim"] .ecna-app .text-slate-700,
+[data-theme="dark"] .ecna-app .text-slate-700 {
+  color: var(--card-heading) !important;
+}
+[data-theme="dim"] .ecna-app .text-slate-600,
+[data-theme="dark"] .ecna-app .text-slate-600 {
+  color: var(--card-muted) !important;
+}
+[data-theme="dim"] .ecna-app .text-slate-500,
+[data-theme="dark"] .ecna-app .text-slate-500 {
+  color: var(--card-muted) !important;
+}
+[data-theme="dim"] .ecna-app .border-slate-200,
+[data-theme="dark"] .ecna-app .border-slate-200 {
+  border-color: var(--card-border) !important;
+}
+[data-theme="dim"] .ecna-app .border-slate-100,
+[data-theme="dark"] .ecna-app .border-slate-100 {
+  border-color: var(--card-border) !important;
+}
+[data-theme="dim"] .ecna-app .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
+[data-theme="dark"] .ecna-app .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: var(--card-border) !important;
+}
+
+[data-theme="dim"] .ecna-app .bg-amber-50,
+[data-theme="dark"] .ecna-app .bg-amber-50 {
+  background-color: rgba(245, 158, 11, 0.12) !important;
+}
+[data-theme="dim"] .ecna-app .border-amber-200,
+[data-theme="dark"] .ecna-app .border-amber-200 {
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+[data-theme="dim"] .ecna-app .text-amber-900,
+[data-theme="dark"] .ecna-app .text-amber-900 {
+  color: #fcd34d !important;
+}
+[data-theme="dim"] .ecna-app .text-amber-950,
+[data-theme="dark"] .ecna-app .text-amber-950 {
+  color: #fde68a !important;
+}
+
+[data-theme="dim"] .ecna-app .bg-sky-50,
+[data-theme="dark"] .ecna-app .bg-sky-50 {
+  background-color: rgba(14, 165, 233, 0.1) !important;
+}
+[data-theme="dim"] .ecna-app .border-brand-200,
+[data-theme="dark"] .ecna-app .border-brand-200 {
+  border-color: rgba(7, 132, 195, 0.4) !important;
+}
+
+/* Code / mono blocks in dim dark */
+[data-theme="dim"] .ecna-app .bg-\[\#1e1e1e\],
+[data-theme="dark"] .ecna-app .bg-\[\#1e1e1e\] {
+  background-color: #0d1117 !important;
+}
+[data-theme="dim"] .ecna-app .bg-slate-800,
+[data-theme="dark"] .ecna-app .bg-slate-800 {
+  background-color: #21262d !important;
+}
+
+.ecna-footer {
+  background: var(--footer-bg);
+  border-color: var(--footer-border);
+}
+
+.ecna-hero-input {
+  background: var(--hero-input-bg) !important;
+  color: var(--hero-input-text) !important;
+  border-color: var(--hero-input-border) !important;
+}
+.ecna-hero-input::placeholder {
+  color: var(--card-muted);
+  opacity: 0.85;
+}
+
+/*********************************************/
+/* Wordmark: full logo.png — no stretch (contain + auto width) */
+.ecna-wordmark {
+  height: 2.5rem;
+  width: auto;
+  max-width: min(220px, 55vw);
+  object-fit: contain;
+  object-position: left center;
+  flex-shrink: 0;
+}
+
+.ecna-wordmark-footer {
+  height: 2.75rem;
+  width: auto;
+  max-width: min(260px, 70vw);
+  object-fit: contain;
+  object-position: left center;
+  flex-shrink: 0;
+}
+
+/* Small icon (favicon.svg / hex mark) — square box, no stretch */
+.ecna-icon-mark {
+  object-fit: contain;
+  object-position: center;
+}
+
+.ecna-icon-sm {
+  width: 30px;
+  height: 30px;
+}
+
+
+button.add-network-button {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    background: #0670a3;
+    border-radius: 9px;
+    padding: 5px 15px 5px 5px;
+    border: 1px solid #0670a3;
+    font-size: 12px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* sliding transparent effect */
+button.add-network-button::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        120deg,
+        transparent,
+        rgba(255, 255, 255, 0.15),
+        transparent
+    );
+    transition: all 0.4s ease;
+}
+
+/* hover effects */
+ .add-network-button:hover::before {
+    left: 100%;
+}
+
+ .add-network-button:hover {
+    background: #0670a3;
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.3);
+}
+
+/* icon box */
+.bg-addnetwork {
+    width: 45px;
+    height: 45px;
+    border-radius: 9px;
+    background: #06162d;
+    display: grid;
+    place-content: center;
+    border: 1px solid #082c61;
+    padding: 3px;
+    transition: transform 0.3s ease;
+}
+
+/* icon slight pop */
+ .add-network-button:hover .bg-addnetwork {
+    transform: scale(1.08);
+}
+
+@keyframes ecnascan-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+/**********************Loader*********************************/
+
+/* --- ECNA Custom Loader Styling --- */
+.ecna-loader-container {
+    --loader-cyan: #06b6d4;
+    --loader-bg: #f8f9fa;
+    --loader-text: #1e293b;
+    
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    background-color: var(--loader-bg);
+    width: 100%;
+}
+
+.ecna-loader-visual {
+    position: relative;
+    width: 240px; /* Bigger and bold */
+    height: 240px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 40px;
+}
+
+/* Outer Static/Slow Ring */
+.ecna-loader-ring-outer {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 2px dashed rgba(6, 182, 212, 0.2);
+    animation: ecna-rotate 10s linear infinite;
+}
+
+/* Radar Sweep Effect */
+.ecna-loader-radar {
+    position: absolute;
+    width: 85%;
+    height: 85%;
+    border-radius: 50%;
+    background: conic-gradient(from 0deg, transparent 60%, var(--loader-cyan) 100%);
+    opacity: 0.3;
+    animation: ecna-rotate 2s linear infinite;
+}
+
+/* Main Spinning Progress Ring */
+.ecna-loader-ring-inner {
+    position: absolute;
+    width: 75%;
+    height: 75%;
+    border-radius: 50%;
+    border: 4px solid transparent;
+    border-top-color: var(--loader-cyan);
+    border-left-color: var(--loader-cyan);
+    animation: ecna-rotate-rev 1s cubic-bezier(0.42, 0, 0.58, 1) infinite;
+}
+
+/* Center Logo Core */
+.ecna-loader-logo-core {
+    position: relative;
+    z-index: 10;
+    width: 100px;
+    height: 100px;
+    background: #ffffff;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.08);
+    animation: ecna-pulse-glow 2.5s ease-in-out infinite;
+}
+
+.ecna-loader-icon {
+    width: 60px;
+    height: 60px;
+    object-fit: contain;
+}
+
+/* Text & Title Styling */
+.ecna-loader-info {
+    text-align: center;
+}
+
+.ecna-loader-title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--loader-text);
+    margin: 0;
+    letter-spacing: -0.5px;
+}
+
+.ecna-loader-dot-anim span {
+    animation: ecna-dot-bounce 1.4s infinite;
+    display: inline-block;
+    margin-left: 2px;
+}
+
+.ecna-loader-dot-anim span:nth-child(2) { animation-delay: 0.2s; }
+.ecna-loader-dot-anim span:nth-child(3) { animation-delay: 0.4s; }
+
+/* Branding Badge */
+.ecna-loader-badge {
+    margin-top: 15px;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(6, 182, 212, 0.1);
+    color: #0369a1;
+    padding: 8px 24px;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    border: 1px solid rgba(6, 182, 212, 0.2);
+}
+
+.ecna-loader-pulse-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--loader-cyan);
+    border-radius: 50%;
+    animation: ecna-pulse-simple 1.5s infinite;
+}
+
+/* --- Animations --- */
+@keyframes ecna-rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes ecna-rotate-rev {
+    from { transform: rotate(360deg); }
+    to { transform: rotate(0deg); }
+}
+
+@keyframes ecna-pulse-glow {
+    0%, 100% { transform: scale(1); box-shadow: 0 15px 35px rgba(0,0,0,0.08); }
+    50% { transform: scale(1.05); box-shadow: 0 0 25px rgba(6, 182, 212, 0.4); }
+}
+
+@keyframes ecna-dot-bounce {
+    0%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-10px); }
+}
+
+@keyframes ecna-pulse-simple {
+    0% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(2.5); opacity: 0; }
+}
+
+/*******************************************************/
+
+

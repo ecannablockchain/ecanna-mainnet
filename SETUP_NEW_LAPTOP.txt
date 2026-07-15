@@ -1,0 +1,742 @@
+================================================================================
+ECNASCAN — NEW MACHINE SETUP, RESUME & SERVER MIGRATION (OPERATIONS GUIDE)
+================================================================================
+
+Repo root = folder that contains workspaces package.json (npm workspaces).
+
+Always start here:
+   cd C:\Users\Administrator\Desktop\Blockchain
+   (replace with your actual path on Linux/macOS)
+
+Companion docs (Markdown):
+   docs/LOCAL-DEV-COMMANDS.md     — command cheat sheet
+   docs/SERVER-MIGRATION.md       — full server move / upgrade runbook
+   docs/DATABASE-SCALE.md         — SQL Server scale (90M+ blocks)
+   docs/LIVE-FROM-ZERO.md         — production chain + deploy order
+   docs/API-LIVE-DEPLOY.md        — API + explorer live URLs
+
+================================================================================
+GOLDEN RULES — READ BEFORE ANY COMMAND
+================================================================================
+
+WHAT CREATES A **NEW** CHAIN (native ECNA is NOT re-minted — genesis defines supply):
+   - Running `npm run local:fresh` or `npm run local:fresh:native`
+   - Running `npm run local:chain:reset` (deletes Anvil saved state)
+   - Replacing `ecnachain/genesis.json` and re-init Geth data/
+   - Restarting **Hardhat** (`npm run local:node`) — chain lives in RAM only
+   - Starting Anvil **without** a valid `contracts/.persistent-chain/anvil-state.json`
+
+WHAT **DOES NOT** CREATE A NEW CHAIN (safe resume):
+   - Stopping and restarting **Geth Docker** (`ecnachain/`) — chaindata on disk
+   - Stopping Anvil with **Ctrl+C** and restarting `npm run local:node:persistent`
+   - Restarting API, indexer, explorer, dashboard (`npm run local:stack`)
+   - Server reboot — as long as chain data + DB are intact
+
+WHAT CREATES A **NEW PETH TOKEN** (new contract address):
+   - Running `npm run local:deploy` on a **fresh** chain
+   - Re-deploying contracts to an existing chain without intent
+
+   Rule: deploy PETH **once per chain**. Keep `PETH_TOKEN_ADDRESS` in server/.env.
+
+INDEXER (explorer DB) BEHAVIOUR ON RESTART:
+   - Keeps a cursor `lastBlock` in the database
+   - On restart: continues indexing from lastBlock + 1
+   - Does NOT re-mint tokens; only reads blocks from RPC
+   - If RPC chain is **shorter** than DB (e.g. Hardhat restarted): auto-clears
+     index and resyncs from block 0
+   - If RPC chain **hash mismatches** at cursor: auto-clears and resyncs
+
+NATIVE ECNA SUPPLY:
+   - **Geth production:** 1B ECNA allocated in genesis — never re-generated
+   - **Anvil/Hardhat dev:** test accounts pre-funded; no new genesis mint on resume
+
+================================================================================
+SECTION 1 — FIRST TIME ON ANY MACHINE (STEP BY STEP)
+================================================================================
+
+Use this when you clone the repo on a laptop, VPS, or CI runner for the first time.
+
+--- STEP 1: PREREQUISITES ---
+
+   1) Node.js LTS 20.x or 22.x
+        node -v
+        npm -v
+
+   2) Git (optional, for clone)
+
+   3) Docker + Docker Compose — REQUIRED for production Geth (ecnachain/)
+        docker --version
+        docker compose version
+
+   4) Foundry (Anvil) — OPTIONAL, only for local persistent dev chain
+        https://book.getfoundry.sh/getting-started/installation
+        anvil --version
+
+   5) MetaMask or compatible wallet — for dashboard / manual txs
+
+--- STEP 2: ONE-TIME BOOTSTRAP ---
+
+   Windows (recommended):
+      .\bootstrap-full.ps1
+
+   Linux / macOS / manual:
+      npm run local:bootstrap
+
+   This installs dependencies, runs Prisma generate + db push, compiles contracts,
+   and copies .env.example → .env where files are missing.
+
+   After first bootstrap on SQL Server, also run (once per DB):
+      cd server
+      npm run db:apply-scale
+
+   If npm install fails with EPERM (Windows file lock):
+      - Stop all running dev servers (local:stack, API, indexer)
+      - Close IDE terminals using the repo
+      - Retry: npm install
+
+--- STEP 3: ENVIRONMENT FILES ---
+
+   If bootstrap did not create them, copy manually:
+
+      copy server\.env.example server\.env
+      copy apps\explorer\.env.example apps\explorer\.env
+      copy apps\dashboard\.env.example apps\dashboard\.env
+      copy contracts\.env.example contracts\.env
+      copy apps\website\.env.example apps\website\.env
+
+   Linux/macOS:
+      cp server/.env.example server/.env
+      (same pattern for other apps)
+
+   Minimum alignment for ECNA chain 4111:
+
+      server/.env:
+        RPC_URL=http://YOUR_SERVER_IP:8545
+        RPC_CHAIN_ID=4111
+        CHAIN_ID=4111
+        NATIVE_SYMBOL=ECNA
+        DATABASE_URL=sqlserver://HOST:1433;database=Db_ECNAChain;user=...;password={...};encrypt=true;trustServerCertificate=true
+
+      (See server/.env.example for full format. This project uses MS SQL Server only.)
+
+      apps/explorer/.env & apps/dashboard/.env:
+        VITE_RPC_URL=http://YOUR_SERVER_IP:8545
+        VITE_CHAIN_ID=4111
+        VITE_API_URL=http://YOUR_SERVER_IP:4000
+
+   Replace YOUR_SERVER_IP with:
+        - 127.0.0.1 or localhost if browser and RPC on same machine
+        - Public VPS IP or domain for remote access
+
+   IMPORTANT — RPC reachability:
+        Hardhat binds to 127.0.0.1 only. For API/indexer on same machine use:
+        RPC_URL=http://127.0.0.1:8545
+        Geth Docker with published port 8545 can use public IP.
+
+--- STEP 4: CHOOSE YOUR CHAIN BACKEND ---
+
+   OPTION A — PRODUCTION (recommended for live):
+      cd ecnachain
+      copy .env.example .env          (edit validator + treasury addresses)
+      docker compose up -d
+      cd ..
+      npm run check:rpc -w contracts  (must show chain 4111 OK)
+
+   OPTION B — LOCAL DEV, RESUMABLE (Anvil + disk):
+      Terminal 1: npm run local:node:persistent
+      Requires Foundry. State: contracts/.persistent-chain/anvil-state.json
+
+   OPTION C — LOCAL DEV, QUICK (Hardhat, NOT resumable):
+      Terminal 1: npm run local:node
+      New chain every time you stop Terminal 1.
+
+--- STEP 5: FIRST-TIME TOKEN DEPLOY (PETH — optional) ---
+
+   Only on a **new** chain, only **once**:
+
+      Terminal 2 (chain must be running in Terminal 1):
+         npm run local:deploy
+
+   Copy printed addresses to:
+      server/.env          → PETH_TOKEN_ADDRESS
+      apps/dashboard/.env  → VITE_PETH_TOKEN, VITE_TREASURY_ADDRESS
+
+   contracts/deployments/localhost.json is also written — server can auto-read it.
+
+--- STEP 6: CLEAR INDEXER (new chain on SQL Server) ---
+
+   Required when you started a **new** chain — `local:fresh` does NOT wipe SQL Server:
+
+      npm run server:clear-indexed
+
+   This clears indexed blocks/transactions in Db_ECNAChain; the on-chain data is unchanged.
+
+--- STEP 7: START APPLICATION STACK ---
+
+      Terminal 2 (or 3 if deploy was separate):
+         npm run local:stack
+
+   Starts: API (4000) + indexer + explorer (5174) + dashboard (5173)
+
+   Optional marketing site:
+         npm run website:dev    → http://YOUR_SERVER_IP:5180
+
+--- STEP 8: VERIFY ---
+
+      curl http://YOUR_SERVER_IP:4000/health
+      → {"ok":true,"database":"up"}
+
+      curl http://YOUR_SERVER_IP:4000/api/v1/config
+      → chainId 4111, rpcUrl, explorerUrl
+
+      Open explorer: http://YOUR_SERVER_IP:5174
+
+   MetaMask network:
+      Chain ID: 4111 (hex 0x100f)
+      RPC:      http://YOUR_SERVER_IP:8545  (must be reachable from browser)
+      Explorer: http://YOUR_SERVER_IP:5174
+
+================================================================================
+SECTION 2 — FLOW A: FRESH DEPLOY (COPY-PASTE COMMANDS)
+================================================================================
+
+When: new machine, new chain, or you intentionally wiped state.
+Result: clean DB record, new chain height from 0, new PETH if you deploy.
+
+   cd C:\Users\Administrator\Desktop\Blockchain
+
+   npm run local:fresh
+
+   Terminal 1 — pick ONE chain backend:
+      npm run local:node:persistent     ← resumable (Anvil)
+      npm run local:node                  ← Hardhat; new chain each restart
+
+   Terminal 2:
+      npm run local:deploy
+      (paste addresses into server/.env and apps/dashboard/.env)
+
+      npm run server:clear-indexed        ← required (clears SQL Server index)
+
+      npm run local:stack
+
+   Optional extra native fund to treasury:
+      npm run fund:treasury -w contracts
+
+================================================================================
+SECTION 3 — FLOW B: RESUME AFTER STOP (COPY-PASTE COMMANDS)
+================================================================================
+
+When: you stopped services or rebooted; you want the SAME chain to continue.
+Result: block numbers continue (e.g. block 5000 → 5001), same balances, same
+        PETH address, indexer catches up from last indexed block.
+
+--- 3A) GETH PRODUCTION (Docker) ---
+
+   Chain data: ecnachain/data/validator1/geth/chaindata
+
+   Terminal 1:
+      cd ecnachain
+      docker compose up -d
+
+   Terminal 2 (repo root):
+      npm run local:stack
+
+   Do NOT run: local:fresh, local:deploy, local:chain:reset, geth init
+
+--- 3B) ANVIL PERSISTENT (local dev) ---
+
+   Chain data: contracts/.persistent-chain/anvil-state.json
+
+   Before stop (important):
+      - Press Ctrl+C in Anvil terminal and wait for process exit
+      - Do NOT kill -9 or close terminal with X before flush (may lose last blocks)
+      - State also auto-saves on timer (default 30s ANVIL_STATE_INTERVAL_SEC)
+
+   After stop / reboot:
+
+   Terminal 1:
+      npm run local:node:persistent
+
+   Terminal 2:
+      npm run local:stack
+
+   Do NOT run: local:fresh, local:deploy, server:clear-indexed (unless you
+   intentionally want to wipe explorer DB while keeping chain)
+
+--- 3C) HARDHAT (local:node) — NOT RESUMABLE ---
+
+   If you were using Hardhat and stopped Terminal 1:
+      → That chain is gone. You MUST run FLOW A again (fresh + deploy).
+
+--- 3D) REMOTE RPC + SQL DB (no local chain process) ---
+
+   Chain runs on another server; this machine only runs API + UI.
+
+   server/.env must have:
+      RPC_URL=http://<chain-server>:8545
+      DATABASE_URL=<your SQL connection>
+
+   Terminal 1 only:
+      npm run local:stack
+
+   Do NOT start local:node or local:node:persistent unless doing contract dev.
+
+--- WHAT HAPPENS TO BLOCKS / TXS / NATIVE TOKEN ON RESUME ---
+
+   | Component        | On resume                         |
+   |------------------|-----------------------------------|
+   | Native ECNA      | Same balances (genesis / state)   |
+   | Block numbers    | Continue from last chain head     |
+   | Old transactions | Still on chain, still in DB       |
+   | New transactions | Appended to new blocks            |
+   | PETH contract    | Same address (no redeploy)        |
+   | Indexer          | Indexes from lastBlock + 1        |
+
+================================================================================
+SECTION 4 — FLOW C: FRESH NATIVE ONLY (NO PETH DEPLOY)
+================================================================================
+
+   npm run local:fresh:native
+
+   Terminal 1:
+      npm run local:node:persistent
+
+   Terminal 2:
+      npm run server:clear-indexed      ← clears SQL Server index for new chain
+      npm run local:stack
+
+   Do NOT run local:deploy.
+
+================================================================================
+SECTION 5 — PRODUCTION ON DIGITALOCEAN DROPLETS (PERSISTENCE & RELIABILITY)
+================================================================================
+
+Pricing reference: https://www.digitalocean.com/pricing/droplets
+Full migration detail: docs/SERVER-MIGRATION.md
+Database scale (90M+ blocks, 5M+ txs): docs/DATABASE-SCALE.md
+
+--- 5.0 GOLDEN RULE FOR LIVE / PRODUCTION ---
+
+   DO NOT use Anvil persistent (anvil-state.json) or Hardhat for production.
+   Those are LOCAL DEV only. A multi-GB JSON file WILL fail, hang, or OOM.
+
+   Production persistence = TWO layers (both survive reboot):
+
+   | Layer | What persists | Where | On reboot |
+   |-------|---------------|-------|-----------|
+   | CHAIN | Blocks, balances, all on-chain txs | Geth chaindata (LevelDB) | docker compose up -d → continues |
+   | EXPLORER | Indexed blocks/txs for API/UI | SQL Server Db_ECNAChain | Indexer reads lastBlock → catch-up |
+
+   SQL Server does NOT store the blockchain. Geth does.
+   SQL Server stores the explorer index + cursor (IndexerState.lastBlock).
+
+--- 5.1 RECOMMENDED DIGITALOCEAN LAYOUT ---
+
+   OPTION A — SPLIT (recommended for reliability & scale):
+
+      Droplet 1 — CHAIN NODE (Geth only)
+         - Run: ecnachain/docker compose up -d
+         - Open: 8545 (RPC), 30303 (P2P validators)
+         - Attach a DigitalOcean Volume to ecnachain/data/ (chain grows forever)
+
+      Droplet 2 — APP STACK (API + indexer + Nginx + static UIs)
+         - Run: built explorer/dashboard + server API + indexer
+         - server/.env: RPC_URL=http://DROPLET1_PRIVATE_IP:8545
+         - DATABASE_URL → your SQL Server (can stay on separate host)
+
+      SQL Server — EXPLORER DB (your current host or any managed SQL Server)
+         - Db_ECNAChain — blocks, transactions, ChainStats, IndexerState
+
+   OPTION B — SINGLE DROPLET (smaller traffic / testing live):
+
+      One Ubuntu 22.04 Droplet: Geth + API + indexer + Nginx
+         - RPC_URL=http://127.0.0.1:8545
+         - Still use remote SQL Server (DO does not offer managed MS SQL Server)
+         - Use a Volume for ecnachain/data/ — never rely on droplet disk alone
+
+--- 5.2 DROPLET SIZE GUIDE (DigitalOcean 2026 pricing) ---
+
+   Minimum (testnet / low traffic):
+      Basic 2 vCPU / 4 GiB / 80 GiB SSD — ~$24/mo
+      OK for API-only if chain is on another droplet.
+
+   Recommended START (chain + API on one droplet):
+      Basic 4 vCPU / 8 GiB / 160 GiB SSD — ~$48/mo
+      OR General Purpose 2 vCPU / 8 GiB — ~$63/mo (dedicated CPU)
+
+   Recommended PRODUCTION (chain droplet):
+      CPU-Optimized 4 vCPU / 8 GiB — ~$84/mo
+      OR Storage-Optimized 4 vCPU / 32 GiB / 600 GiB — ~$262/mo if chaindata is large
+
+   Heavy index (5M+ transactions, millions of blocks):
+      - Chain: Storage-Optimized or Volume block storage (add as chain grows)
+      - API droplet: 4 vCPU / 8 GiB minimum
+      - SQL Server: separate host with SSD, daily backups (NOT on the same disk as chain)
+
+   Enable Droplet Backups in DO control panel:
+      Weekly (20% of droplet cost) or Daily (30%) — see DO Backups pricing.
+
+--- 5.3 FIRST-TIME SETUP ON A DIGITALOCEAN DROPLET (Ubuntu) ---
+
+   1) Create Droplet: Ubuntu 22.04 LTS, SSH key, region near your users.
+
+   2) Initial server hardening:
+        apt update && apt upgrade -y
+        apt install -y docker.io docker-compose-plugin git ufw nginx
+        ufw allow OpenSSH
+        ufw allow 80/tcp
+        ufw allow 443/tcp
+        ufw allow 30303/tcp    # Geth P2P (chain droplet only)
+        ufw enable
+        # RPC 8545: prefer PRIVATE VPC IP between droplets, or restrict by IP:
+        # ufw allow from APP_DROPLET_IP to any port 8545
+
+   3) Clone repo:
+        git clone <your-repo> /opt/ecnascan
+        cd /opt/ecnascan
+
+   4) Bootstrap:
+        npm run local:bootstrap
+        cd server && npm run db:apply-scale
+
+   5) Configure env (see 5.4 below).
+
+   6) Start Geth (chain):
+        cd ecnachain
+        cp .env.example .env    # edit validator addresses
+        docker compose up -d
+        docker compose logs -f  # wait until RPC responds
+
+   7) Build & run API + indexer with PM2 (auto-restart on crash/reboot):
+
+        cd /opt/ecnascan/server
+        npm run build
+        npm install -g pm2
+
+        # Option A — ecosystem file at repo root (recommended):
+        cd /opt/ecnascan
+        pm2 start ecosystem.config.cjs
+
+        # Option B — manual:
+        # pm2 start dist/index.js --name ecna-api --cwd server
+        # pm2 start dist/indexer.js --name ecna-indexer --cwd server
+
+        pm2 save
+        pm2 startup    # run the printed command so PM2 survives reboot
+
+   8) Build frontends & serve via Nginx:
+        cd /opt/ecnascan
+        npm run build -w apps/explorer
+        npm run build -w apps/dashboard
+        # Point Nginx server blocks to apps/explorer/dist and apps/dashboard/dist
+        # Proxy /api → http://127.0.0.1:4000
+
+   9) Verify:
+        curl http://127.0.0.1:4000/health
+        curl http://127.0.0.1:4000/api/v1/config
+        npm run check:rpc -w contracts
+
+--- 5.4 PRODUCTION server/.env (COPY TO DROPLET) ---
+
+   NODE_ENV=production
+   SITE_AUTH_SECRET=<random-32-chars-or-more>    # required in production
+   SITE_AUTH_COOKIE_SECURE=1                     # when using HTTPS
+
+   DATABASE_URL=sqlserver://YOUR_SQL_HOST:1433;database=Db_ECNAChain;user=...;password={...};encrypt=true;trustServerCertificate=true
+
+   PORT=4000
+   HOST=0.0.0.0
+   RPC_URL=http://127.0.0.1:8545          # same droplet as Geth
+   # OR RPC_URL=http://10.x.x.x:8545       # private IP of chain droplet (split layout)
+
+   RPC_CHAIN_ID=4111
+   CHAIN_ID=4111
+   NATIVE_SYMBOL=ECNA
+   NATIVE_NAME=ECNA
+
+   EXPLORER_PUBLIC_URL=https://scan.yourdomain.com
+   CORS_ORIGIN=https://scan.yourdomain.com,https://app.yourdomain.com
+   # Production API blocks unknown browser origins (CORS_ORIGIN required)
+
+   INDEXER_POLL_MS=3000
+   INDEXER_BATCH_SIZE=64                  # 32 default; use 64–128 when far behind after outage
+   INDEXER_GAS_SNAPSHOTS=0                # MUST stay 0 at scale (millions of blocks)
+   RATE_LIMIT_MAX=300                       # API requests per IP per minute
+   # NORMALIZE_ADDRESSES_ON_START=1       # one-off only; off by default in production
+   # PRISMA_CONNECTION_LIMIT=25           # raise if pool timeout under load
+
+   Do NOT set INDEXER_START_AT_HEAD=1 on production (you want full history indexed).
+
+--- 5.4b PRODUCTION ecnachain/.env (Geth RPC hardening) ---
+
+   ECNA_PRIMARY_ADDRESS=0xYourProductionSigner
+   ECNA_NATIVE_MINT_ADDRESS=0xYourTreasury
+   HTTP_API=eth,net,web3,txpool,miner       # no debug on public RPC
+   FULLNODE_HTTP_API=eth,net,web3,txpool
+   HTTP_CORS_DOMAIN=https://scan.yourdomain.com
+   # Firewall: do NOT expose port 8545 to 0.0.0.0/0 — use private IP between droplets
+   # New production chain: node scripts/build-genesis.mjs (NOT dev keys in sample genesis.json)
+
+--- 5.5 WHAT HAPPENS WHEN THE SERVER RESTARTS (POWER / REBOOT / CRASH) ---
+
+   Step-by-step — nothing reloads 5M transactions into RAM:
+
+   1) Linux boots
+   2) Docker starts Geth → reads ecnachain/data/validator1/geth/chaindata from disk
+      → chain continues from last block (same balances, same tx history)
+   3) PM2 starts ecna-api → connects to SQL Server (seconds)
+   4) PM2 starts ecna-indexer → reads ONE row: IndexerState.lastBlock
+      → indexes blocks lastBlock+1 … current head in batches (INDEXER_BATCH_SIZE)
+      → old 5M txs already in SQL Server are NOT re-imported
+   5) Explorer works; only blocks missed during downtime are caught up
+
+   Example: 2 hours downtime, 3s blocks ≈ 2,400 blocks behind.
+   At batch 64 + 3s poll → catches up in a few minutes.
+
+--- 5.6 MAKE GETH CHAINDATA SURVIVE (DIGITALOCEAN VOLUME) ---
+
+   Chaindata grows forever. Put it on a DO Volume so resize/rebuild droplet does not lose chain:
+
+   1) DO Control Panel → Volumes → Create Volume → attach to chain droplet
+   2) Mount e.g. /mnt/ecna-chaindata
+   3) Symlink or bind-mount:
+        ecnachain/data/validator1 → /mnt/ecna-chaindata/validator1
+   4) Backup Volume snapshots in DO + run ecnachain/scripts/backup-chain.sh weekly
+
+--- 5.7 BACKUPS (REQUIRED — NO BACKUP = CANNOT RECOVER) ---
+
+   | What | How often | Tool |
+   |------|-----------|------|
+   | Geth chaindata | Daily | ecnachain/scripts/backup-chain.sh + DO Volume snapshot |
+   | SQL Server Db_ECNAChain | Daily | SSMS / sqlcmd BACKUP DATABASE → .bak off-server |
+   | server/.env + keys | On change | Encrypted storage (NOT git) |
+   | Droplet | Weekly | DO Droplet Backups (control panel) |
+
+   Test restore once on a staging droplet before going live.
+
+--- 5.8 DOCKER + PM2 AUTO-RESTART ---
+
+   Geth — in ecnachain/docker-compose.yml ensure restart policy:
+        restart: unless-stopped
+
+   After editing:
+        cd ecnachain && docker compose up -d
+
+   API + indexer — PM2 (see 5.3 step 7):
+        pm2 status
+        pm2 logs ecna-indexer
+
+--- 5.9 FIREWALL & RPC SECURITY (DO DROPLET) ---
+
+   - Never expose unlocked Geth account keys
+   - Prefer RPC on private VPC between droplets (10.x.x.x)
+   - If RPC must be public: Nginx rate-limit + allowlist, or Cloudflare tunnel
+   - Port 30303 open for validator P2P only on chain droplet
+   - SQL Server 1433: allow ONLY app droplet IP, never 0.0.0.0/0
+
+--- 5.10 AFTER REBOOT CHECKLIST (RUN IN ORDER) ---
+
+      cd /opt/ecnascan/ecnachain && docker compose up -d
+      pm2 resurrect    # or: pm2 start dist/index.js --name ecna-api (if not saved)
+      curl http://127.0.0.1:8545 -X POST -H "Content-Type: application/json" \
+        -d '{"jsonrpc":"2.0","method":"eth_blockNumber","params":[],"id":1}'
+      curl http://127.0.0.1:4000/health
+      pm2 logs ecna-indexer --lines 20    # should show catch-up, not errors
+
+--- 5.11 WHAT WILL STILL BREAK (AND HOW TO AVOID) ---
+
+   | Mistake | Result | Fix |
+   |---------|--------|-----|
+   | Use Anvil persistent live | 61 GB JSON, OOM, hours to start | Use Geth only |
+   | Restart Hardhat on prod | New chain, DB mismatch | Use Geth only |
+   | Only API running, no indexer | Explorer frozen | PM2 both api + indexer |
+   | INDEXER_GAS_SNAPSHOTS=1 | SQL bloat, slow | Keep 0 |
+   | No chaindata backup | Reboot OK; disk loss = chain gone | Volume + backup-chain |
+   | No SQL backup | Index rebuild from genesis (slow) | Daily .bak |
+   | Tiny droplet ($6) for chain+5M txs | OOM / disk full | Size up + Volume |
+
+--- 5.12 REMOVE LOCAL DEV BLOAT BEFORE UPLOADING TO DROPLET ---
+
+   On your laptop, delete huge Anvil state (does NOT affect SQL Server or Geth):
+
+      npm run local:chain:reset -w contracts
+
+   Do not copy contracts/.persistent-chain/ to the production server.
+
+================================================================================
+SECTION 6 — SERVER MIGRATION (NEW SERVER OR MOVE HOST)
+================================================================================
+
+Full detail: docs/SERVER-MIGRATION.md
+
+--- 6A) MIGRATE TO A **NEW** SERVER (new IP / new VPS) ---
+
+   GOAL: Same chain history, same explorer data, new host.
+
+   ON OLD SERVER — backup:
+
+      1) Stop services gracefully:
+            cd ecnachain && docker compose down
+            (stop API/indexer PM2 or local:stack)
+
+      2) Backup Geth chaindata:
+            cd ecnachain
+            .\scripts\backup-chain.ps1          (Windows)
+            ./scripts/backup-chain.sh           (Linux)
+
+      3) Backup explorer database (SQL Server):
+            Full backup of Db_ECNAChain (or your DATABASE_URL database name)
+            Example: SSMS → Tasks → Back Up Database, or your host's backup tool
+
+      4) Save securely (NOT in public git):
+            - server/.env
+            - ecnachain/.env
+            - ecnachain/docker/miner-private.hex (validator key)
+            - contracts/.env (deployer key if used)
+
+   ON NEW SERVER — restore:
+
+      1) Install prerequisites (Node 20+, Docker)
+      2) Clone repo or copy project folder
+      3) .\bootstrap-full.ps1  OR  npm run local:bootstrap
+      4) Restore .env files; UPDATE all URLs to new IP/domain:
+            RPC_URL, VITE_API_URL, VITE_RPC_URL, EXPLORER_PUBLIC_URL,
+            CORS_ORIGIN, DATABASE_URL
+      5) Restore Geth data:
+            cd ecnachain
+            docker compose down
+            .\scripts\restore-chain.ps1 -Archive <backup.tar.gz>
+            docker compose up -d
+      6) Restore database to new SQL Server instance (restore .bak / backup)
+      7) cd server && npx prisma generate && npx prisma db push && npm run db:apply-scale
+      8) Production run:
+            cd server && npm run build
+            npm start                    (API)
+            node dist/indexer.js         (indexer — separate process/PM2)
+      9) Rebuild frontends with new VITE_* URLs:
+            npm run build -w apps/explorer
+            npm run build -w apps/dashboard
+      10) Verify:
+            curl http://NEW_IP:4000/health
+            curl http://NEW_IP:4000/api/v1/config
+            npm run check:rpc -w contracts
+
+   Do NOT run local:fresh or local:deploy after migration unless you want a
+   **brand new** chain on purpose.
+
+--- 6B) UPGRADE **EXISTING** SERVER (same machine, new code) ---
+
+      git pull
+      npm install
+      npm run server:db:push
+      npm run build -w server
+      npm run build -w apps/explorer
+      npm run build -w apps/dashboard
+      (restart API + indexer + nginx)
+
+   Chain data and DB stay; no redeploy needed.
+
+--- 6C) SPLIT DEPLOYMENT (chain on Server A, API on Server B) ---
+
+   Server A — chain only:
+      ecnachain/docker compose up -d
+      Firewall: 8545 (RPC), 30303 (P2P between validators)
+
+   Server B — explorer stack:
+      server/.env:
+         RPC_URL=http://SERVER_A_IP:8545
+         DATABASE_URL=<SQL Server on B or managed SQL Server>
+      npm run local:stack  (or production build + PM2)
+
+   Frontends: VITE_RPC_URL must point to a URL reachable from users' browsers
+   (often public RPC on Server A or reverse proxy).
+
+================================================================================
+SECTION 7 — PORTS & URLS (DEFAULTS)
+================================================================================
+
+   8545   JSON-RPC HTTP     (Geth / Anvil / Hardhat)
+   8546   WebSocket         (Geth Docker)
+   30303  P2P               (Geth validators)
+   4000   ECNASCAN REST API
+   5174   Explorer UI
+   5173   Dashboard UI
+   5180   Marketing website
+   1433   SQL Server        (explorer DB — remote or same host)
+
+   Replace 50.28.84.113 in .env examples with your server IP or domain.
+
+================================================================================
+SECTION 8 — USEFUL NPM COMMANDS (REPO ROOT)
+================================================================================
+
+   npm run local:bootstrap       install + db + compile
+   npm run local:fresh           wipe local chain files + prepare (SQL Server NOT wiped)
+   npm run local:fresh:native    fresh without PETH
+   npm run local:node            Hardhat (RAM, ~3s blocks)
+   npm run local:node:persistent Anvil + disk (resume)
+   npm run local:chain:reset     delete Anvil state only
+   npm run local:deploy          deploy PETH + fund treasury
+   npm run local:stack           API + indexer + explorer + dashboard
+   npm run server:clear-indexed  wipe indexed blocks/txs in SQL Server (chain unchanged)
+   npm run ecnachain:docker      Geth via docker compose
+   npm run check:rpc -w contracts test RPC + chain ID
+
+================================================================================
+SECTION 9 — TROUBLESHOOTING
+================================================================================
+
+   ECONNREFUSED on RPC (50.28.84.113:8545):
+      - Chain not running, OR node bound to 127.0.0.1 only (Hardhat)
+      - Fix: start chain; set RPC_URL=http://127.0.0.1:8545 for same-machine API
+
+   Indexer: "lastBlock > chain head; clearing index":
+      - Hardhat was restarted (new short chain) while DB had old height
+      - Fix: expected; or use Anvil persistent / Geth for resume
+
+   Anvil slow / OOM on start:
+      - contracts/.persistent-chain/anvil-state.json may be huge (GB+)
+      - Fix: npm run local:chain:reset (loses local Anvil chain only)
+
+   Explorer empty but chain has blocks:
+      - Indexer not running (local:stack includes it)
+      - Wrong RPC_URL in server/.env
+
+   Port already in use:
+      - netstat -ano | findstr ":4000"   (Windows)
+      - Kill old node/vite process; restart stack
+
+   Prisma EPERM on Windows:
+      - Stop dev servers; delete server/node_modules/.prisma if needed; retry
+
+================================================================================
+SECTION 10 — DECISION TREE (WHICH FLOW?)
+================================================================================
+
+   First time on machine?
+      → Section 1 + Flow A (or Geth path in LIVE-FROM-ZERO.md)
+
+   Stopped laptop overnight, used Anvil persistent before?
+      → Flow B — 3B
+
+   Stopped laptop, used Hardhat before?
+      → Flow A again (deploy again)
+
+   Going live on DigitalOcean?
+      → Section 5 (Geth + SQL Server + PM2 + backups)
+
+   Production Geth server rebooted?
+      → Section 5.10 + Flow B — 3A
+
+   Moving to new VPS / Droplet?
+      → Section 6A + docs/SERVER-MIGRATION.md
+
+   Only pulled new code on same server?
+      → Section 6B
+
+   Want completely new chain + new token?
+      → Flow A (local:fresh + deploy)
+
+================================================================================
+END — Keep this file in git; teammates use the same commands on every machine.
+================================================================================

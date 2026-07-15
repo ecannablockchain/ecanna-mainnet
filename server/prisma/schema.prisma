@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+  // Local output avoids EPERM rename errors on OneDrive / locked hoisted node_modules\.prisma
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL")
+}
+
+model Block {
+  number       BigInt         @id
+  hash         String
+  parentHash   String
+  timestamp    DateTime
+  gasUsed      String
+  gasLimit     String
+  miner        String
+  txCount      Int
+  transactions Transaction[]
+  createdAt    DateTime       @default(now())
+
+  @@index([timestamp])
+  @@index([miner, number(sort: Desc)])
+}
+
+model Transaction {
+  id                String          @id @default(cuid())
+  hash              String          @unique
+  blockNumber       BigInt
+  blockHash         String
+  transactionIndex  Int             @default(0)
+  from              String
+  to                String?
+  value             String
+  gasPrice          String?
+  gasUsed           String?
+  status            Int
+  input             String          @default("0x") @db.NVarChar(Max)
+  nonce             Int
+  /// Receipt `contractAddress` (lowercase) — set for txs that deploy a contract (`to` null or factory pattern when node fills it).
+  deployedContractAddress String?   @db.NVarChar(1000)
+  block             Block           @relation(fields: [blockNumber], references: [number])
+  tokenTransfers    TokenTransfer[]
+  createdAt         DateTime        @default(now())
+
+  @@index([from])
+  @@index([to])
+  @@index([blockNumber])
+  @@index([blockNumber, transactionIndex])
+  @@index([from, blockNumber(sort: Desc)])
+  @@index([to, blockNumber(sort: Desc)])
+  @@index([deployedContractAddress])
+}
+
+model TokenTransfer {
+  id            String        @id @default(cuid())
+  txHash        String
+  logIndex      Int
+  token         String
+  from          String
+  to            String
+  value         String
+  transaction   Transaction   @relation(fields: [txHash], references: [hash])
+  createdAt     DateTime      @default(now())
+
+  @@unique([txHash, logIndex])
+  @@index([token])
+  @@index([from])
+  @@index([to])
+  @@index([token, txHash])
+}
+
+model ContractVerification {
+  id                 String   @id @default(cuid())
+  address            String   @unique
+  contractName       String
+  compilerKind       String   @default("solidity-single-file")
+  compilerVersion    String
+  optimization       Boolean
+  runs               Int      @default(200)
+  evmVersion         String   @default("shanghai")
+  exactBytecodeMatch Boolean  @default(false)
+  openSourceLicense  String   @default("MIT")
+  sourceCode         String         @db.NVarChar(Max)
+  abi                String         @db.NVarChar(Max)
+  /// Full `data` field of the contract-creation transaction (0x…), optional.
+  creationTxInput          String? @db.NVarChar(Max)
+  /// Compiler `bytecode` / `bytecode.object` from artifacts (no constructor args appended), optional — used to split constructor args.
+  compilerCreationBytecode String? @db.NVarChar(Max)
+  verifiedAt         DateTime @default(now())
+}
+
+/// Token branding / links — editable only by deployer wallet (signed).
+model ContractTokenProfile {
+  id              String   @id @default(cuid())
+  address         String   @unique
+  deployerAddress String
+  logoUrl         String?  @db.NVarChar(1000)
+  websiteUrl      String?  @db.NVarChar(1000)
+  twitterUrl      String?  @db.NVarChar(500)
+  discordUrl      String?  @db.NVarChar(500)
+  telegramUrl     String?  @db.NVarChar(500)
+  description     String?  @db.NVarChar(2000)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model GasSnapshot {
+  id        String   @id @default(cuid())
+  blockNum  BigInt
+  baseFee   String?
+  gasUsed   String
+  createdAt DateTime @default(now())
+
+  @@index([blockNum(sort: Desc)])
+}
+
+/// O(1) explorer totals — updated by indexer (no COUNT(*) on 90M+ rows).
+model ChainStats {
+  id             Int      @id @default(1)
+  blockCount     BigInt   @default(0)
+  txCount        BigInt   @default(0)
+  transferCount  BigInt   @default(0)
+  updatedAt      DateTime @updatedAt
+}
+
+/// Hourly tx buckets for home chart — updated by indexer.
+model HourlyTxStats {
+  bucket  DateTime @id
+  txCount Int      @default(0)
+}
+
+model IndexerState {
+  id        Int    @id @default(1)
+  lastBlock BigInt
+}
+
+/// Website accounts (marketing hub register/login) — separate from on-chain identities.
+model SiteUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

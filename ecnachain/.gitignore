@@ -1,0 +1,10 @@
+data/
+backups/
+*.tar.gz
+*.zip
+.env
+secrets/
+!docker/password-dev.txt
+docker/miner-private.hex
+testnet/ecnachain/docker/*.hex
+testnet/ecnachain/data/

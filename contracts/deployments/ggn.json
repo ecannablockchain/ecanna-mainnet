@@ -1,0 +1,10 @@
+{
+  "network": "pethMainnet",
+  "chainId": 4111,
+  "contract": "GreenGloryNFT",
+  "address": "0x217462201609aEEb4acD1Be3fa2EE95C0a7e9Dab",
+  "owner": "0xF4B6C206f7a6C4b59Ebe129C43Ea9592a03dc0cC",
+  "initialSupply": "1000000000",
+  "deployer": "0x3e90435d3B3DEF3eFAEb9Fe136AF867470447788",
+  "deployedAt": "2026-06-22T19:14:26.649Z"
+}

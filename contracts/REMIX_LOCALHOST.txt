@@ -1,0 +1,63 @@
+Remix se ECNA par deploy — poora sahi flow (READ THIS)
+======================================================
+
+!!! GAS ESTIMATION FAILED / "missing revert data" — PEHLE YEH DEKHO !!!
+-----------------------------------------------------------------------
+ECNA Geth chain **Shanghai fork ke pehle** hai — bytecode mein **PUSH0** (EIP-3855) allowed nahi.
+
+Remix default compiler kabhi **shanghai/cancun** EVM use karta hai → deploy fail / estimateGas error.
+
+FIX (Remix): Left panel **Solidity Compiler** → **Advanced Configurations** →
+**EVM Version** = **paris** (ya **london**). Phir dubara **Compile** → **Deploy**.
+
+Bina iske chhota sa bhi contract deploy nahi hoga — MetaMask / RPC sahi hone ke baad bhi.
+
+
+PEHLE YEH TRY KARO (1 minute)
+-----------------------------
+Repo mein: contracts/contracts/remix/RemixSmokeTest.sol
+- Koi import nahi — sirf yeh file Remix mein paste / open karo.
+- Compiler 0.8.24+ → Injected Provider - MetaMask → Deploy.
+- Yeh chal gaya = RPC + chain + balance OK. Phir apna bada contract try karo.
+
+
+CODE / CONFIG (repo)
+--------------------
+1) ecnachain/metamask-network.json — chainId 0x100f (4111); rpc http://50.28.84.113:8545
+2) contracts/hardhat.config.cjs — PETH_RPC_URL 8545, PETH_CHAIN_ID 4111
+3) ecnachain/docker/geth-entrypoint.sh — --http.corsdomain "*", --http.vhosts "*", --ws.origins "*"
+   (Docker container RESTART karo taake naye flags load hon)
+4) contracts/scripts/check-rpc.cjs — cd contracts && npm run check:rpc → OK hona chahiye
+
+
+TUMHARI SIDE (order)
+--------------------
+A) Local node on port 8545 (Hardhat / Anvil / Geth).  npm run check:rpc  → OK
+
+B) MetaMask network (haath se)
+   - RPC:     http://50.28.84.113:8545
+   - Chain ID: 4111
+   - Symbol:  ECNA
+   Purani galat network (wrong chain id / wrong port) delete ya edit karo.
+
+C) Balance: jo account deploy kare us par ECNA ho.
+   ecnachain/.env → ECNA_PRIMARY_ADDRESS = miner; usi ki key docker/miner-private.hex → MetaMask import.
+
+D) Remix: Injected Provider - MetaMask (WalletConnect mat; Remix VM mat)
+
+E) Gas estimation fail: nonce reset (MetaMask Advanced); ya zyada ECNA; pehle RemixSmokeTest se verify
+
+
+OPTION — Hardhat node alag (8545 / 31337)
+-----------------------------------------
+Sirf `npx hardhat node`. ECNA Docker ke saath mix mat karo.
+
+
+PETH.sol
+--------
+UUPS — proxy + initialize. Simple contracts jab network OK hon tab deploy.
+
+
+Explorer
+--------
+Deploy ke baad explorer par contract dikhega.

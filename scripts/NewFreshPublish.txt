@@ -1,0 +1,413 @@
+================================================================================
+ECNA — NEW FRESH PUBLISH (CLIENT GO-LIVE)
+Module-wise steps from DigitalOcean console
+================================================================================
+
+CURRENT LIVE STATE (15 July 2026)
+---------------------------------
+See docs/ADDRESSES-LIVE.md and docs/KT-ECNA-MAINNET-TESTNET.md §3b.
+Recommended from laptop (both networks):  .\scripts\deploy-fresh-golive.ps1
+
+  Mainnet miner:    0x9F926a69ba55c2F436A51108f8eb96E21fC5a329
+  Mainnet treasury: 0x34c7288B86E10A7096523FB1d6eC12948af95897  (1 Crore)
+  Testnet treasury: 0x2509e87b12DAD407DC3521Dd15A95B3F74EF41D3  (100M)
+  Testnet faucet:   0x93994c8B2557B74Ae988640444268CD3473D6f68  (100M)
+
+WHEN TO USE (manual steps below)
+--------------------------------
+Run when replacing validator/treasury addresses again after UAT.
+Rebuild genesis, wipe chain data, clear SQL index, restart.
+
+WARNING: This destroys all blocks, transactions, and explorer DB rows.
+         Balances reset to genesis premine only.
+
+SERVER (DigitalOcean)
+---------------------
+  IP:       168.144.69.102
+  Domain:   ecnascan.com
+  SSH:      ssh root@168.144.69.102
+  Project:  /opt/ecnascan/
+
+  Live URLs:
+    Website:   https://ecnascan.com
+    Explorer:  https://explorer.ecnascan.com
+    Dashboard: https://dashboard.ecnascan.com
+    API:       https://api.ecnascan.com
+    RPC:       https://rpc.ecnascan.com
+
+================================================================================
+BEFORE YOU START — COLLECT FROM CLIENT
+================================================================================
+
+  [ ] Validator address     (Clique signer — mines blocks)
+  [ ] Validator private key → file: ecnachain/docker/miner-private.hex
+                              (64 hex chars, NO 0x prefix)
+  [ ] Treasury address      (receives 1 Crore / 10,000,000 ECNA genesis premine)
+  [ ] Treasury private key  (give to client ONLY — secure channel)
+  [ ] Chain ID decision     (keep 4111 OR new number e.g. 4112)
+  [ ] Optional: PETH token contract address (if deploying ERC-20 later)
+
+================================================================================
+DIGITALOCEAN CONSOLE — HOW TO OPEN TERMINAL
+================================================================================
+
+  1. Log in: https://cloud.digitalocean.com
+  2. Droplets → select your server (168.144.69.102)
+  3. Click "Console" or "Access" → Launch Droplet Console
+     OR from your laptop: ssh root@168.144.69.102
+  4. All commands below run as root unless noted.
+
+================================================================================
+OPTION A — ONE COMMAND (RECOMMENDED)
+================================================================================
+
+  After uploading new miner-private.hex and setting client addresses:
+
+    cd /opt/ecnascan
+
+    export ECNA_VALIDATORS=0xClientValidatorAddressHere
+    export ECNA_TREASURY=0xClientTreasuryAddressHere
+    export ECNA_CHAIN_ID=4111
+
+    bash scripts/client-go-live-reset.sh
+
+  Then complete MODULE sections below for website / dashboard / explorer
+  rebuild (if chain ID or treasury display changed).
+
+================================================================================
+OPTION B — MODULE BY MODULE (MANUAL)
+================================================================================
+
+
+--------------------------------------------------------------------------------
+MODULE 1 — ecnachain (BLOCKCHAIN / GETH / RPC)
+--------------------------------------------------------------------------------
+Path on server: /opt/ecnascan/ecnachain/
+
+WHAT IT DOES
+  - Runs Geth validator (Docker: ecna-validator-1)
+  - JSON-RPC on localhost:8545 (public: https://rpc.ecnascan.com)
+  - Genesis = native ECNA premine (not ERC-20 deploy)
+
+STEP 1 — Upload validator private key
+  File: /opt/ecnascan/ecnachain/docker/miner-private.hex
+  Content: 64-character hex (private key for VALIDATOR address, no 0x)
+  Must match ECNA_VALIDATORS / ECNA_PRIMARY_ADDRESS in genesis extraData.
+
+STEP 2 — Edit ecnachain environment
+  nano /opt/ecnascan/ecnachain/.env
+
+    ECNA_PRIMARY_ADDRESS=0xClientValidatorAddress
+    ECNA_NATIVE_MINT_ADDRESS=0xClientTreasuryAddress
+
+STEP 3 — Build new genesis.json (1 Crore ECNA to treasury)
+  cd /opt/ecnascan/ecnachain
+  export ECNA_VALIDATORS=0xClientValidatorAddress
+  export ECNA_TREASURY=0xClientTreasuryAddress
+  export ECNA_CHAIN_ID=4111
+  node scripts/build-genesis.mjs
+
+  Confirm: cat genesis.json | grep -i alloc
+
+STEP 4 — Stop Geth and wipe OLD chain data (required)
+  cd /opt/ecnascan/ecnachain
+  docker compose down
+  rm -rf data/validator1/geth
+  rm -rf data/validator1/keystore
+  rm -f  data/validator1/.genesis.sha256
+
+STEP 5 — Start fresh chain
+  docker compose up -d
+  docker ps    # ecna-validator-1 should be Up
+
+STEP 6 — Verify RPC
+  curl -s -X POST http://127.0.0.1:8545 -H "Content-Type: application/json" \
+    -d '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}'
+  # Expect: 0x100f (= 4111)
+
+  curl -s -X POST http://127.0.0.1:8545 -H "Content-Type: application/json" \
+    -d '{"jsonrpc":"2.0","method":"eth_getBalance","params":["0xClientTreasury","latest"],"id":1}'
+  # Expect: 0x84595161401484a000000 (= 1 Crore / 10,000,000 ECNA in wei)
+
+DO NOT
+  - Run geth init on top of existing chaindata after restore (only on fresh wipe)
+  - Change genesis without wiping data/validator1/geth
+  - Expose port 8545 publicly without Nginx (already via rpc.ecnascan.com)
+
+
+--------------------------------------------------------------------------------
+MODULE 2 — API + INDEXER (server/)
+--------------------------------------------------------------------------------
+Path on server: /opt/ecnascan/server/
+Processes:      pm2 → ecna-api, ecna-indexer
+Port:           4000 (public: https://api.ecnascan.com)
+
+WHAT IT DOES
+  - REST API for explorer, dashboard, website
+  - Indexer copies blocks/txs from Geth → local SQL Server
+
+STEP 1 — Stop API and indexer FIRST (before DB wipe)
+  pm2 stop ecna-api ecna-indexer
+
+STEP 2 — Edit server environment
+  nano /opt/ecnascan/server/.env
+
+  Required keys (update for client addresses):
+
+    ECNA_PRIMARY_ADDRESS=0xClientValidatorAddress
+    ECNA_NATIVE_MINT_ADDRESS=0xClientTreasuryAddress
+    RPC_URL=http://127.0.0.1:8545
+    RPC_PUBLIC_URL=https://rpc.ecnascan.com
+    CHAIN_ID=4111
+    RPC_CHAIN_ID=4111
+    DATABASE_URL="sqlserver://127.0.0.1:1433;database=Db_ECNAChain;..."
+    NODE_ENV=production
+    EXPLORER_PUBLIC_URL=https://explorer.ecnascan.com
+    DASHBOARD_PUBLIC_URL=https://dashboard.ecnascan.com
+    CORS_ORIGIN=https://ecnascan.com,https://www.ecnascan.com,...
+
+  Note: TREASURY_ADDRESS is auto-set from ECNA_NATIVE_MINT_ADDRESS at startup.
+
+STEP 3 — Clear SQL index (empty blocks, txs, verifications)
+  cd /opt/ecnascan/server
+  npx tsx scripts/clear-all-indexed.ts
+
+  Expected output: blocks=0 txs=0 transfers=0 verifications=0
+
+  Optional — wipe website test login accounts:
+  npx tsx -e "import './src/load-env-deployment.js'; import { prisma } from './src/lib/prisma.js'; await prisma.siteUser.deleteMany(); await prisma.\$disconnect();"
+
+STEP 4 — Restart API + indexer
+  cd /opt/ecnascan
+  pm2 restart all --update-env
+  pm2 status
+
+STEP 5 — Verify API
+  curl -s http://127.0.0.1:4000/api/v1/health
+  # {"ok":true,"database":"up"}
+
+  curl -s http://127.0.0.1:4000/api/v1/config
+  # treasuryAddress = client treasury, rpcUrl = https://rpc.ecnascan.com
+
+  curl -s http://127.0.0.1:4000/api/v1/dashboard
+  # indexerLagBlocks should go to 0 within ~1 minute (local SQL)
+
+SQL SERVER (local on same droplet)
+  Container: ecna-mssql
+  Host:        127.0.0.1:1433 only (not public)
+  DB name:     Db_ECNAChain
+  Password:    /opt/ecnascan/server/docker/.env.mssql
+
+  If SQL container down:
+    cd /opt/ecnascan/server/docker
+    docker compose -f docker-compose.mssql.yml --env-file .env.mssql up -d
+
+
+--------------------------------------------------------------------------------
+MODULE 3 — EXPLORER (apps/explorer)
+--------------------------------------------------------------------------------
+Web root: /var/www/explorer/
+URL:      https://explorer.ecnascan.com
+
+WHAT IT DOES
+  - Static React app; reads data from API (not SQL directly)
+  - After go-live reset: indexer repopulates blocks from block 0
+
+STEP 1 — Edit build environment (only if chain ID or URLs change)
+  nano /opt/ecnascan/apps/explorer/.env
+
+    VITE_API_URL=https://api.ecnascan.com
+    VITE_RPC_URL=https://rpc.ecnascan.com
+    VITE_CHAIN_ID=4111
+    VITE_CHAIN_NAME=E Canna Mainnet
+    VITE_NATIVE_SYMBOL=ECNA
+    VITE_NATIVE_NAME=E Canna
+    VITE_EXPLORER_URL=https://explorer.ecnascan.com
+
+STEP 2 — Rebuild and publish
+  cd /opt/ecnascan/apps/explorer
+  npm run build
+  rm -rf /var/www/explorer/*
+  cp -r dist/* /var/www/explorer/
+
+STEP 3 — Verify in browser
+  https://explorer.ecnascan.com
+  https://explorer.ecnascan.com/address/0xClientTreasuryAddress
+    - Native balance: 10,000,000 ECNA (1 Crore)
+    - Indexed transactions: 0 (normal for genesis premine)
+
+NO separate DB step for explorer — API indexer handles SQL.
+
+
+--------------------------------------------------------------------------------
+MODULE 4 — DASHBOARD (apps/dashboard)
+--------------------------------------------------------------------------------
+Web root: /var/www/dashboard/
+URL:      https://dashboard.ecnascan.com
+
+WHAT IT DOES
+  - Wallet connect (MetaMask), show treasury + balances
+  - Must show CLIENT treasury address after go-live
+
+STEP 1 — Edit build environment (REQUIRED when treasury changes)
+  nano /opt/ecnascan/apps/dashboard/.env
+
+    VITE_API_URL=https://api.ecnascan.com
+    VITE_RPC_URL=https://rpc.ecnascan.com
+    VITE_CHAIN_ID=4111
+    VITE_TREASURY_ADDRESS=0xClientTreasuryAddress
+    VITE_EXPLORER_URL=https://explorer.ecnascan.com
+    VITE_WALLETCONNECT_PROJECT_ID=demo
+
+STEP 2 — Rebuild and publish
+  cd /opt/ecnascan/apps/dashboard
+  npm run build
+  rm -rf /var/www/dashboard/*
+  cp -r dist/* /var/www/dashboard/
+
+STEP 3 — Verify
+  Open https://dashboard.ecnascan.com
+  Treasury panel shows client address + 1 Crore ECNA (after RPC sync)
+
+
+--------------------------------------------------------------------------------
+MODULE 5 — WEBSITE (apps/website)
+--------------------------------------------------------------------------------
+Web root: /var/www/website/
+URL:      https://ecnascan.com
+
+WHAT IT DOES
+  - Marketing site, wallet setup, network reference
+  - RPC / chain ID baked in at build time; treasury from API at runtime
+
+STEP 1 — Edit build environment (if chain ID or RPC URL changes)
+  nano /opt/ecnascan/apps/website/.env
+
+    VITE_WEBSITE_URL=https://ecnascan.com
+    VITE_EXPLORER_URL=https://explorer.ecnascan.com
+    VITE_DASHBOARD_URL=https://dashboard.ecnascan.com
+    VITE_API_URL=https://api.ecnascan.com
+    VITE_RPC_URL=https://rpc.ecnascan.com
+    VITE_CHAIN_ID=4111
+    VITE_NATIVE_SYMBOL=ECNA
+    VITE_NATIVE_NAME=E Canna
+    VITE_CHAIN_NAME=E Canna Mainnet
+
+STEP 2 — Rebuild and publish
+  cd /opt/ecnascan/apps/website
+  npm run build
+  rm -rf /var/www/website/*
+  cp -r dist/* /var/www/website/
+
+STEP 3 — Verify
+  https://ecnascan.com → Wallet / Network reference
+  RPC URL must show: https://rpc.ecnascan.com (NOT 127.0.0.1)
+  Chain ID: 4111
+
+
+--------------------------------------------------------------------------------
+MODULE 6 — NGINX + SSL (usually NO change on fresh publish)
+--------------------------------------------------------------------------------
+Config: /etc/nginx/sites-available/ecnascan
+
+Only touch if domains change. Otherwise skip.
+
+  nginx -t
+  systemctl reload nginx
+
+SSL (Let's Encrypt):
+  certbot certificates
+
+
+--------------------------------------------------------------------------------
+MODULE 7 — PM2 + DOCKER STATUS (quick check)
+--------------------------------------------------------------------------------
+
+  pm2 status
+  pm2 logs ecna-api --lines 20
+  pm2 logs ecna-indexer --lines 20
+
+  docker ps
+  # ecna-validator-1  Up
+  # ecna-mssql        Up (healthy)
+
+
+================================================================================
+FULL ORDER OF OPERATIONS (CHECKLIST)
+================================================================================
+
+  [ ] 1. Client provides validator + treasury addresses and keys
+  [ ] 2. Upload miner-private.hex to ecnachain/docker/
+  [ ] 3. Update ecnachain/.env + server/.env addresses
+  [ ] 4. Build genesis (node scripts/build-genesis.mjs)
+  [ ] 5. pm2 stop api + indexer
+  [ ] 6. docker compose down + wipe data/validator1/geth
+  [ ] 7. docker compose up -d (Geth)
+  [ ] 8. npx tsx scripts/clear-all-indexed.ts (SQL wipe)
+  [ ] 9. pm2 restart all --update-env
+  [ ] 10. Rebuild dashboard (treasury in .env)
+  [ ] 11. Rebuild website + explorer (if chain ID / URLs changed)
+  [ ] 12. Verify health, balance, explorer address page
+  [ ] 13. Hand client treasury key + MetaMask network details
+  [ ] 14. Enable nightly chain backup (see below)
+
+
+================================================================================
+VERIFY AFTER PUBLISH
+================================================================================
+
+  curl https://api.ecnascan.com/api/v1/health
+  curl https://api.ecnascan.com/api/v1/config
+  curl https://api.ecnascan.com/api/v1/stats
+
+  Treasury on explorer:
+  https://explorer.ecnascan.com/address/0xClientTreasuryAddress
+
+  MetaMask network for client:
+    Network name:  E Canna Mainnet
+    Currency:      E Canna (ECNA)
+    RPC URL:       https://rpc.ecnascan.com
+    Chain ID:      4111
+    Symbol:        ECNA
+    Explorer:      https://explorer.ecnascan.com
+
+
+================================================================================
+HAND TO CLIENT (SECURE — NOT IN EMAIL PLAIN TEXT)
+================================================================================
+
+  1. Treasury address + private key (spends 1 Crore premine)
+  2. MetaMask custom network settings (above)
+  3. Public URLs (website, explorer, dashboard, API docs)
+  4. Validator key ONLY if client operates the node themselves
+
+
+================================================================================
+POST GO-LIVE — BACKUP (DO ONCE AFTER CLIENT APPROVES)
+================================================================================
+
+  Schedule on server (cron example):
+
+    0 3 * * * /opt/ecnascan/ecnachain/scripts/backup-chain.sh \
+      /opt/ecnascan/ecnachain/data/validator1 >> /var/log/ecna-backup.log 2>&1
+
+  Also save offline (encrypted):
+    - genesis.json
+    - miner-private.hex
+    - treasury private key
+    - server/.env
+    - server/docker/.env.mssql
+
+
+================================================================================
+SCRIPTS IN REPO
+================================================================================
+
+  /opt/ecnascan/scripts/client-go-live-reset.sh   — automated steps 3–9
+  /opt/ecnascan/scripts/setup-local-sqlserver.sh — local SQL (already done)
+  /opt/ecnascan/ecnachain/scripts/backup-chain.sh — chaindata backup
+  /opt/ecnascan/server/scripts/clear-all-indexed.ts — wipe SQL index
+
+================================================================================
+END
+================================================================================

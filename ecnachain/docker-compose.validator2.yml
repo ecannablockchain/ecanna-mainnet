@@ -1,0 +1,39 @@
+# Second Clique signer (same genesis as validator-1). Requires ECNA_V1_ENODE from scripts/print-enode.*
+#
+# 1) Start validator-1 only: docker compose up -d
+# 2) .\scripts\print-enode.ps1  OR  ./scripts/print-enode.sh
+# 3) export ECNA_V1_ENODE='enode://....@host.docker.internal:30303' (adjust IP for remote peers)
+# 4) Import signer key for 0x7099... into ./data/validator2/keystore and set password in docker/password-signer2.txt
+# 5) docker compose -f docker-compose.yml -f docker-compose.validator2.yml up -d
+#
+# Dev sample genesis lists 0x7099... as second signer — use Hardhat account #1 key + password if matching keystore.
+
+services:
+  ecna-validator-2:
+    image: ethereum/client-go:v1.13.15
+    container_name: ecna-validator-2
+    restart: unless-stopped
+    ports:
+      - "8645:8545"
+      - "8646:8546"
+      - "30304:30304"
+      - "30304:30304/udp"
+    volumes:
+      - ./genesis.json:/genesis.json:ro
+      - ./data/validator2:/data
+      - ./docker/geth-entrypoint.sh:/entrypoint.sh:ro
+      - ./docker/password-dev.txt:/secrets/password.txt:ro
+    environment:
+      GENESIS_PATH: /genesis.json
+      GETH_DATADIR: /data
+      NETWORK_ID: "4111"
+      HTTP_PORT: "8545"
+      WS_PORT: "8546"
+      P2P_PORT: "30304"
+      ENABLE_MINING: "1"
+      BOOTNODES: "${ECNA_V1_ENODE:?Set ECNA_V1_ENODE to validator-1 enode URL}"
+      MINER_ETHERBASE: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+      UNLOCK_ACCOUNT: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+      PASSWORD_FILE: /secrets/password.txt
+    entrypoint: ["/bin/sh", "/entrypoint.sh"]
+    command: []

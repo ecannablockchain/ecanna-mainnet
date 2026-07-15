@@ -1,0 +1,40 @@
+{
+  "name": "primeetherscan-ecosystem",
+  "private": true,
+  "workspaces": [
+    "contracts",
+    "server",
+    "apps/dashboard",
+    "apps/explorer",
+    "apps/website"
+  ],
+  "scripts": {
+    "contracts:compile": "npm run compile -w contracts",
+    "contracts:test": "npm run test -w contracts",
+    "contracts:deploy": "npm run deploy -w contracts",
+    "server:dev": "npm run dev -w server",
+    "server:db:push": "npm run db:push -w server",
+    "server:db:generate": "npm run db:generate -w server",
+    "dashboard:dev": "npm run dev -w apps/dashboard",
+    "explorer:dev": "npm run dev -w apps/explorer",
+    "website:dev": "npm run dev -w apps/website",
+    "local:node": "npm run node -w contracts",
+    "local:node:persistent": "npm run node:persistent -w contracts",
+    "local:chain:reset": "npm run node:reset-persistent -w contracts",
+    "local:stack:remote": "concurrently -n api,idx,exp,dash -c cyan,magenta,green,yellow \"npm run dev -w server\" \"npm run indexer -w server\" \"npm run explorer:dev\" \"npm run dashboard:dev\"",
+    "local:fresh": "node scripts/fresh-blockchain.cjs && npm run local:prepare",
+    "local:fresh:native": "node scripts/fresh-native-only.cjs && npm run local:prepare",
+    "local:deploy": "npm run deploy:local:full -w contracts && npm run fund:treasury -w contracts",
+    "local:fund": "npm run fund:treasury -w contracts",
+    "local:gas": "npm run fund:treasury -w contracts",
+    "local:prepare": "npm run server:db:generate && npm run server:db:push",
+    "local:bootstrap": "npm install && npm run local:prepare && npm run contracts:compile",
+    "local:stack": "concurrently -n api,idx,exp,dash -c cyan,magenta,green,yellow \"npm run dev -w server\" \"npm run indexer -w server\" \"npm run explorer:dev\" \"npm run dashboard:dev\"",
+    "server:clear-indexed": "npm run clear-indexed -w server",
+    "ecnachain:docker": "npm run docker:up --prefix ecnachain",
+    "build": "npm run build -w server && npm run build -w apps/dashboard && npm run build -w apps/explorer && npm run build -w apps/website"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

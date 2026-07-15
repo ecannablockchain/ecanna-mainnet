@@ -1,0 +1,52 @@
+{
+  "name": "contracts",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy": "hardhat run scripts/deploy.cjs",
+    "deploy:local": "hardhat run scripts/deploy.cjs --network localhost",
+    "deploy:local:full": "hardhat run scripts/deploy-local-full.cjs --network localhost",
+    "deploy:contracts": "hardhat run scripts/deploy-local-full.cjs --network localhost",
+    "fund:treasury": "hardhat run scripts/fund-address.cjs --network localhost",
+    "fund:native": "hardhat run scripts/fund-address.cjs --network localhost",
+    "local:deploy-and-fund": "npm run deploy:local:full && npm run fund:treasury",
+    "node": "cross-env HARDHAT_NODE_INTERVAL_MS=3000 hardhat node",
+    "node:instant": "hardhat node",
+    "node:persistent": "node scripts/run-anvil-persistent.cjs",
+    "node:reset-persistent": "node scripts/reset-persistent-chain.cjs",
+    "send-native": "hardhat run scripts/send-native.cjs --network localhost",
+    "send-native:rpc": "node scripts/send-native-rpc.cjs",
+    "check:rpc": "node scripts/check-rpc.cjs",
+    "verify": "hardhat verify"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
+    "@nomicfoundation/hardhat-ethers": "^3.0.0",
+    "@nomicfoundation/hardhat-ignition-ethers": "^0.15.0",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.0",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.0",
+    "@typechain/hardhat": "^9.0.0",
+    "@openzeppelin/contracts": "^5.0.2",
+    "@openzeppelin/contracts-upgradeable": "^5.0.2",
+    "@openzeppelin/hardhat-upgrades": "^3.5.0",
+    "@typechain/ethers-v6": "^0.5.1",
+    "@types/chai": "^4.3.11",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.11.0",
+    "chai": "^4.4.1",
+    "cross-env": "^7.0.3",
+    "hardhat": "^2.22.0",
+    "hardhat-gas-reporter": "^1.0.8",
+    "solidity-coverage": "^0.8.11",
+    "ts-node": "^10.9.2",
+    "typechain": "^8.3.0",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.1",
+    "ethers": "^6.11.0"
+  }
+}

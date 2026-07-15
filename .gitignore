@@ -1,0 +1,20 @@
+﻿# Secrets — never commit
+**/.env
+!**/.env.example
+**/*.hex
+!**/*.hex.example
+**/password-dev.txt
+**/jwt.hex
+**/data/
+**/backups/
+scripts/*credentials.local*
+scripts/*.local.md
+scripts/*.local.json
+.tmp-github/
+
+node_modules/
+dist/
+*.tgz
+*.log
+.DS_Store
+Thumbs.db

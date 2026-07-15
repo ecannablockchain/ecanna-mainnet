@@ -1,0 +1,13 @@
+{
+  "chainId": "0x100f",
+  "chainName": "E Canna Mainnet",
+  "nativeCurrency": {
+    "name": "E Canna",
+    "symbol": "ECNA",
+    "decimals": 18
+  },
+  "rpcUrls": [
+    "http://50.28.84.113:8545"
+  ],
+  "blockExplorerUrls": ["http://50.28.84.113:5174"]
+}

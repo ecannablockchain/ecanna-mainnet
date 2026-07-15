@@ -1,0 +1,46 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "postinstall": "prisma generate",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "start:indexer": "node dist/indexer.js",
+    "build": "tsc && node scripts/copy-prisma-client.mjs",
+    "db:generate": "prisma generate",
+    "db:migrate:deploy": "prisma migrate deploy",
+    "db:apply-bytecode-columns": "prisma db execute --file prisma/migrations/20260409120000_contract_verification_creation_bytecode/migration.sql --schema prisma/schema.prisma",
+    "db:apply-deploy-address-column": "prisma db execute --file prisma/migrations/20260409140000_transaction_deployed_contract_address/migration.sql --schema prisma/schema.prisma",
+    "db:apply-scale": "node scripts/apply-scale.mjs",
+    "db:apply-site-user": "prisma db execute --file prisma/migrations/20260409190000_site_user/migration.sql --schema prisma/schema.prisma",
+    "db:push": "prisma db push --skip-generate",
+    "db:push:regen": "prisma db push",
+    "db:studio": "prisma studio",
+    "indexer": "tsx src/indexer.ts",
+    "clear-indexed": "tsx scripts/clear-indexed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "ethers": "^6.11.0",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.2",
+    "helmet": "^7.1.0",
+    "pino": "^9.0.0",
+    "pino-http": "^10.0.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsonwebtoken": "^9.0.7",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.11.0",
+    "@vitejs/plugin-react": "^6.0.1",
+    "prisma": "^5.22.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.3.3"
+  }
+}
