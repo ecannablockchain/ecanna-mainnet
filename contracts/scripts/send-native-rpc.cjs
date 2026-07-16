@@ -1,9 +1,9 @@
 /**
- * Native transfer on any RPC (e.g. http://50.28.84.113:8545).
+ * Native transfer on any RPC (e.g. https://rpc.ecnascan.com).
  * Creates a real tx so the explorer / indexer shows it (genesis alloc alone does not).
  *
  * contracts/.env (or env):
- *   RPC_URL=http://50.28.84.113:8545
+ *   RPC_URL=https://rpc.ecnascan.com
  *   PRIVATE_KEY=0x...   or same as Hardhat: DEPLOYER_PRIVATE_KEY (sender — must hold balance + gas)
  *   RECIPIENT=0x...       (receiver)
  *   SEND_AMOUNT=1000    (whole units, 18 decimals)  OR  SEND_ALL=1  (balance minus gas)
@@ -21,7 +21,7 @@ async function main() {
   const rpc = (
     process.env.RPC_URL ||
     process.env.PETH_RPC_URL ||
-    "http://50.28.84.113:8545"
+    "https://rpc.ecnascan.com"
   ).trim();
   const pk = (
     process.env.PRIVATE_KEY ||

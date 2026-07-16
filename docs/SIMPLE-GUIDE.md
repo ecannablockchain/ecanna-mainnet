@@ -34,7 +34,7 @@
 
 | Cheez | Default |
 |-------|---------|
-| Host RPC | `http://50.28.84.113:8545` |
+| Host RPC | `https://rpc.ecnascan.com` |
 | Chain ID | **4111** |
 | Symbol | **ECNA** |
 
@@ -64,7 +64,7 @@ npm run check:rpc
 
 `contracts/.env.example` → **`contracts/.env`**
 
-- `PETH_RPC_URL` = e.g. `http://50.28.84.113:8545`
+- `PETH_RPC_URL` = e.g. `https://rpc.ecnascan.com`
 - `PETH_CHAIN_ID=4111`
 - `DEPLOYER_PRIVATE_KEY` = funded account (miner / gas)
 - `TREASURY_ADDRESS`, `ADMIN_ADDRESS` = optional
@@ -129,8 +129,8 @@ npm run indexer -w server
 
 **Folder:** `apps/explorer/` — `.env.example` → **`.env`**
 
-- `VITE_API_URL` = e.g. `http://50.28.84.113:4000`
-- `VITE_RPC_URL` = `http://50.28.84.113:8545`
+- `VITE_API_URL` = e.g. `https://api.ecnascan.com`
+- `VITE_RPC_URL` = `https://rpc.ecnascan.com`
 - `VITE_CHAIN_ID=4111`
 - `VITE_NATIVE_SYMBOL=ECNA`
 - `VITE_EXPLORER_URL` = jahan explorer khulega
@@ -171,7 +171,7 @@ Zyada: `contracts/REMIX_LOCALHOST.txt`
 6. `server/.env` — `RPC_URL`, `CHAIN_ID=4111`, `PETH_TOKEN_ADDRESS`, baaki `server/.env.example` jaisa
 7. `apps/explorer/.env` set
 8. `npm run local:stack` (ya API + indexer + explorer alag)
-9. Browser: explorer mostly `http://50.28.84.113:5174` (console dekho)
+9. Browser: explorer mostly `https://explorer.ecnascan.com` (console dekho)
 
 **Live:** `docs/API-LIVE-DEPLOY.md` — API + indexer dono PM2/systemd; **Geth RPC** firewall se reachable.
 

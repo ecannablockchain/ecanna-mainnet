@@ -18,4 +18,4 @@ Write-Host "Starting fresh..."
 docker compose up -d 2>&1 | Out-Null
 if ($LASTEXITCODE -ne 0) { docker compose up -d }
 Write-Host "Done. Wait ~10s then check: block 0 extraData should match genesis.json (your signer)."
-Write-Host 'RPC test: Invoke-RestMethod -Uri http://50.28.84.113:8545 -Method Post -ContentType application/json -Body ''{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x0",false],"id":1}'''
+Write-Host 'RPC test: Invoke-RestMethod -Uri https://rpc.ecnascan.com -Method Post -ContentType application/json -Body ''{"jsonrpc":"2.0","method":"eth_getBlockByNumber","params":["0x0",false],"id":1}'''

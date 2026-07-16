@@ -131,7 +131,7 @@ Pehle **env files** (example se copy), agar bootstrap script use na ho:
 | `apps/explorer/.env.example` → `apps/explorer/.env` | `VITE_CHAIN_ID`, `VITE_RPC_URL` |
 | `apps/dashboard/.env.example` → `apps/dashboard/.env` | same |
 
-Local defaults: **`http://50.28.84.113:8545`**, chain **4111** (`server/.env` + `hardhat.config.cjs`).
+Local defaults: **`https://rpc.ecnascan.com`**, chain **4111** (`server/.env` + `hardhat.config.cjs`).
 
 **Database schema** `local:bootstrap` ke andar hai; alag se:
 
@@ -147,7 +147,7 @@ npm run server:db:push
 npm run local:node
 ```
 
-RPC `http://50.28.84.113:8545`, chain **4111**. Empty blocks ~**3s** par bhi mine hote hain (explorer chain head); txs **turant** mine.
+RPC `https://rpc.ecnascan.com`, chain **4111**. Empty blocks ~**3s** par bhi mine hote hain (explorer chain head); txs **turant** mine.
 
 Sirf tx par block: `npm run node:instant -w contracts`.
 
@@ -163,9 +163,9 @@ Repo root:
 npm run local:stack
 ```
 
-- API: `http://50.28.84.113:4000`
-- Explorer: `http://50.28.84.113:5174`
-- Dashboard: `http://50.28.84.113:5173`
+- API: `https://api.ecnascan.com`
+- Explorer: `https://explorer.ecnascan.com`
+- Dashboard: `https://dashboard.ecnascan.com`
 
 ---
 

@@ -1,6 +1,6 @@
 /**
  * Add / switch ECNA chain in MetaMask (EIP-3085 / 3326).
- * RPC must include http:// — e.g. http://50.28.84.113:8545
+ * RPC must include http:// — e.g. https://rpc.ecnascan.com
  */
 
 const DEFAULT_RPC = "https://rpc.ecnascan.com";

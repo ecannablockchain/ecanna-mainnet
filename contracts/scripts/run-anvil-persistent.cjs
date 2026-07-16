@@ -300,7 +300,7 @@ const args = [
   "--port",
   process.env.ANVIL_PORT || "8545",
   "--host",
-  process.env.ANVIL_HOST || "50.28.84.113",
+  process.env.ANVIL_HOST || "127.0.0.1",
   "--hardfork",
   process.env.ANVIL_HARDFORK || "paris",
   "--mnemonic",

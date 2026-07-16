@@ -664,7 +664,7 @@ SECTION 7 — PORTS & URLS (DEFAULTS)
    5180   Marketing website
    1433   SQL Server        (explorer DB — remote or same host)
 
-   Replace 50.28.84.113 in .env examples with your server IP or domain.
+   Replace rpc.ecnascan.com in .env examples with your server IP or domain.
 
 ================================================================================
 SECTION 8 — USEFUL NPM COMMANDS (REPO ROOT)
@@ -686,7 +686,7 @@ SECTION 8 — USEFUL NPM COMMANDS (REPO ROOT)
 SECTION 9 — TROUBLESHOOTING
 ================================================================================
 
-   ECONNREFUSED on RPC (50.28.84.113:8545):
+   ECONNREFUSED on RPC (rpc.ecnascan.com:8545):
       - Chain not running, OR node bound to 127.0.0.1 only (Hardhat)
       - Fix: start chain; set RPC_URL=http://127.0.0.1:8545 for same-machine API
 

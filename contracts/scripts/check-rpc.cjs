@@ -1,12 +1,12 @@
 /**
  * ECNA RPC sanity check before Remix deploy.
  * Usage (from contracts/): node scripts/check-rpc.cjs
- * Or: PETH_RPC_URL=http://50.28.84.113:8545 node scripts/check-rpc.cjs
+ * Or: PETH_RPC_URL=https://rpc.ecnascan.com node scripts/check-rpc.cjs
  */
 require("dotenv").config();
 const http = require("http");
 
-const url = new URL(process.env.PETH_RPC_URL || "http://50.28.84.113:8545");
+const url = new URL(process.env.PETH_RPC_URL || "https://rpc.ecnascan.com");
 const expected = parseInt(process.env.PETH_CHAIN_ID || "4111", 10);
 
 function post(body) {

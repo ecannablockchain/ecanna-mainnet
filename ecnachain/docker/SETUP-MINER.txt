@@ -15,6 +15,6 @@ Single-address setup (jo address tum doge, wahi sab jagah):
 
 - Problem: blocks / funds nahi — (1) miner-private.hex mein leading space mat rakho, sirf 64 hex. (2) Purana galat import: container band karke `data/validator1/keystore` folder delete karo + `data/validator1/geth` delete karo, phir `docker compose up` (fresh import + init).
 
-- Sabse common: purani chain chal rahi hai (genesis.json update ke baad bhi). `ecnachain` folder se: `.\reset-chain.ps1` chalao — phir MetaMask mein RPC `http://50.28.84.113:8545`, Chain ID `4111`, tumhara address `0x3e90…` — genesis alloc balance dikhega.
+- Sabse common: purani chain chal rahi hai (genesis.json update ke baad bhi). `ecnachain` folder se: `.\reset-chain.ps1` chalao — phir MetaMask mein RPC `https://rpc.ecnascan.com`, Chain ID `4111`, tumhara address `0x3e90…` — genesis alloc balance dikhega.
 
 

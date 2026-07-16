@@ -7,7 +7,9 @@
     "decimals": 18
   },
   "rpcUrls": [
-    "http://50.28.84.113:8545"
+    "https://rpc.ecnascan.com"
   ],
-  "blockExplorerUrls": ["http://50.28.84.113:5174"]
+  "blockExplorerUrls": [
+    "https://explorer.ecnascan.com"
+  ]
 }

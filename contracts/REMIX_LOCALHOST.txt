@@ -23,7 +23,7 @@ Repo mein: contracts/contracts/remix/RemixSmokeTest.sol
 
 CODE / CONFIG (repo)
 --------------------
-1) ecnachain/metamask-network.json — chainId 0x100f (4111); rpc http://50.28.84.113:8545
+1) ecnachain/metamask-network.json — chainId 0x100f (4111); rpc https://rpc.ecnascan.com
 2) contracts/hardhat.config.cjs — PETH_RPC_URL 8545, PETH_CHAIN_ID 4111
 3) ecnachain/docker/geth-entrypoint.sh — --http.corsdomain "*", --http.vhosts "*", --ws.origins "*"
    (Docker container RESTART karo taake naye flags load hon)
@@ -35,7 +35,7 @@ TUMHARI SIDE (order)
 A) Local node on port 8545 (Hardhat / Anvil / Geth).  npm run check:rpc  → OK
 
 B) MetaMask network (haath se)
-   - RPC:     http://50.28.84.113:8545
+   - RPC:     https://rpc.ecnascan.com
    - Chain ID: 4111
    - Symbol:  ECNA
    Purani galat network (wrong chain id / wrong port) delete ya edit karo.

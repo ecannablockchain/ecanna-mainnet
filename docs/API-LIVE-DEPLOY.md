@@ -28,7 +28,7 @@ Yeh doc **`server/` (REST API)** ko internet par chalane aur uske baad **explore
 | **`server/package.json`** | `build`, `start`, `indexer` scripts |
 | **`apps/explorer/.env`** | Build **se pehle** — `VITE_API_URL`, `VITE_RPC_URL`, `VITE_EXPLORER_URL`, … |
 | **`apps/dashboard/.env`** | Build se pehle — chain + RPC + optional API |
-| **`apps/explorer/vite.config.ts`** | Sirf **local dev** proxy (`/api` → `http://50.28.84.113:4000`) — **production build isse depend nahi** jab `VITE_API_URL` set ho |
+| **`apps/explorer/vite.config.ts`** | Sirf **local dev** proxy (`/api` → `https://api.ecnascan.com`) — **production build isse depend nahi** jab `VITE_API_URL` set ho |
 
 Code mein abhi **CORS** almost open hai (`origin: true`) — matlab kisi bhi site se browser API call ho sakti hai. Baad mein tight karna ho to code change se whitelist lagani padegi.
 
@@ -58,7 +58,7 @@ Code mein abhi **CORS** almost open hai (`origin: true`) — matlab kisi bhi sit
    cd server
    npm start
    ```
-   Default **`PORT=4000`**. Reverse proxy (Nginx) se `https://api...` → `http://50.28.84.113:4000`.
+   Default **`PORT=4000`**. Reverse proxy (Nginx) se `https://api...` → `https://api.ecnascan.com`.
 7. **Indexer** alag terminal / systemd service:
    ```bash
    cd server
@@ -86,12 +86,12 @@ Code mein abhi **CORS** almost open hai (`origin: true`) — matlab kisi bhi sit
 |----------|---------------|---------------------|
 | **`DATABASE_URL`** | `sqlserver://host:1433;database=Db_ECNAChain;...` | SQL Server connection string (same format as `server/.env.example`) |
 | **`PORT`** | `4000` | Jo port app sune (Nginx ke peeche 4000 theek) |
-| **`RPC_URL`** | `http://50.28.84.113:8545` | **Wahi URL jahan se Geth reachable hai** — same machine ho to internal IP; public ho to `https://rpc...` |
+| **`RPC_URL`** | `https://rpc.ecnascan.com` | **Wahi URL jahan se Geth reachable hai** — same machine ho to internal IP; public ho to `https://rpc...` |
 | **`RPC_CHAIN_ID`** | `2` | Geth / genesis jaisa hi |
 | **`CHAIN_ID`** | `2` | Usually `RPC_CHAIN_ID` jaisa |
 | **`NATIVE_SYMBOL` / `NATIVE_NAME`** | `ECNA` | Tumhari chain token name |
 | **`PETH_TOKEN_ADDRESS`** | empty ya address | Agar featured token ho to lowercase `0x...` |
-| **`EXPLORER_PUBLIC_URL`** | `http://50.28.84.113:5174` | **Public explorer site** — `https://scan.tumhari-domain.com` (trailing `/` mat) — `/api/v1/config` response mein `explorerUrl` aata hai |
+| **`EXPLORER_PUBLIC_URL`** | `https://explorer.ecnascan.com` | **Public explorer site** — `https://scan.tumhari-domain.com` (trailing `/` mat) — `/api/v1/config` response mein `explorerUrl` aata hai |
 | **`CORS_ORIGIN`** | local URLs | Abhi code isse use nahi karta; future / notes ke liye rakh sakte ho |
 
 Optional indexer flags: `INDEXER_POLL_MS`, `INDEXER_START_AT_HEAD`, `INDEXER_MIN_BLOCK` — `ecnachain` / server README dekho.
@@ -115,7 +115,7 @@ Yeh values **build time** par bundle mein jaati hain — `.env` badalne ke baad 
 | **`VITE_API_URL`** | khali → browser same-origin `/api` use karta hai (sirf jab explorer aur API **ek hi origin** par hon) | `https://api.tumhari-domain.com` (no trailing slash) |
 | **`VITE_RPC_URL`** | local Geth | **Public RPC** jo MetaMask / UI dikhaye |
 | **`VITE_CHAIN_ID`** | `4111` ya `31337` | Tumhari chain ID |
-| **`VITE_EXPLORER_URL`** | `http://50.28.84.113:5174` | `https://scan.tumhari-domain.com` — verify success “new tab” / links ke liye |
+| **`VITE_EXPLORER_URL`** | `https://explorer.ecnascan.com` | `https://scan.tumhari-domain.com` — verify success “new tab” / links ke liye |
 | **`VITE_CHAIN_NAME`**, **`VITE_NATIVE_*`** | jo bhi brand ho | Wahi rakho |
 
 Phir:
@@ -146,7 +146,7 @@ Same idea: `VITE_RPC_URL`, `VITE_CHAIN_ID`, wagaira **public** values; agar dash
 Agar tum **Nginx** se aisa karo:
 
 - `https://scan.tumhari-domain.com` → static explorer `dist/`
-- `https://scan.tumhari-domain.com/api` → proxy to `http://50.28.84.113:4000`
+- `https://scan.tumhari-domain.com/api` → proxy to `https://api.ecnascan.com`
 
 To explorer ke `.env` mein **`VITE_API_URL` khali** chhod kar bhi kaam ho sakta hai (same origin). Phir bhi **`VITE_EXPLORER_URL`** ko `https://scan.tumhari-domain.com` set karo taaki verify / links galat na hon.
 

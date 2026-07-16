@@ -46,7 +46,7 @@ npm run check:rpc
 
 **OK** = chain **4111**, RPC reachable.
 
-**Live:** Agar RPC ko browser / remote clients se chahiye to sirf machine-local par mat rakho — **public host** `50.28.84.113`, firewall, ya reverse proxy setup ke liye `docs/API-LIVE-DEPLOY.md` dekho.
+**Live:** Agar RPC ko browser / remote clients se chahiye to sirf machine-local par mat rakho — **public host** `rpc.ecnascan.com` / server IP, firewall, ya reverse proxy setup ke liye `docs/API-LIVE-DEPLOY.md` dekho.
 
 ---
 
@@ -55,7 +55,7 @@ npm run check:rpc
 1. Folder: **`contracts/`**
 2. **`contracts/.env`** mein confirm karo:
    - **`PETH_RPC_URL`** = jahan Geth hai  
-     - Same machine: `http://50.28.84.113:8545`  
+     - Same machine: `https://rpc.ecnascan.com`  
      - Remote: `http://<server-ip>:8545` (firewall open)
    - **`PETH_CHAIN_ID=4111`**
    - **`DEPLOYER_PRIVATE_KEY=0x...`** = jis account par **ECNA (gas)** ho (miner key file se) — **yeh khali mat chhodo**
@@ -84,7 +84,7 @@ npm run deploy:local:full
 
 | Variable | Matlab |
 |----------|--------|
-| **`RPC_URL`** | Wahi Geth HTTP — local: `http://50.28.84.113:8545` |
+| **`RPC_URL`** | Wahi Geth HTTP — local: `https://rpc.ecnascan.com` |
 | **`RPC_CHAIN_ID` / `CHAIN_ID`** | **4111** |
 | **`PETH_TOKEN_ADDRESS`** | Step 3 ka **proxy address** paste |
 | **`ECNA_PRIMARY_ADDRESS`** | Validator / miner (genesis / ecnachain `.env` jaisa) |
@@ -112,7 +112,7 @@ Ya root: **`npm run local:prepare`**
 
 | Variable | Example |
 |----------|---------|
-| **`VITE_API_URL`** | `https://api.tumhari-domain.com` (live) ya `http://50.28.84.113:4000` |
+| **`VITE_API_URL`** | `https://api.tumhari-domain.com` (live) ya `https://api.ecnascan.com` |
 | **`VITE_RPC_URL`** | Jo wallet MetaMask mein use karega — public RPC URL |
 | **`VITE_CHAIN_ID`** | `4111` |
 | **`VITE_EXPLORER_URL`** | Explorer ka public URL |

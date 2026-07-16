@@ -5,7 +5,7 @@ require("dotenv").config();
 const PRIVATE_KEY =
   process.env.DEPLOYER_PRIVATE_KEY ||
   "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
-const PETH_RPC_URL = process.env.PETH_RPC_URL || "http://50.28.84.113:8545";
+const PETH_RPC_URL = process.env.PETH_RPC_URL || "https://rpc.ecnascan.com";
 const PETH_CHAIN_ID = parseInt(process.env.PETH_CHAIN_ID || "4111", 10);
 
 /**
@@ -80,16 +80,16 @@ module.exports = {
         network: "localhost",
         chainId: PETH_CHAIN_ID,
         urls: {
-          apiURL: process.env.PETH_EXPLORER_API_URL || "http://50.28.84.113:4000/api/verify/etherscan",
-          browserURL: process.env.PETH_EXPLORER_BROWSER_URL || "http://50.28.84.113:5174",
+          apiURL: process.env.PETH_EXPLORER_API_URL || "https://api.ecnascan.com/api/verify/etherscan",
+          browserURL: process.env.PETH_EXPLORER_BROWSER_URL || "https://explorer.ecnascan.com",
         },
       },
       {
         network: "pethTestnet",
         chainId: parseInt(process.env.PETH_TESTNET_CHAIN_ID || "4111", 10),
         urls: {
-          apiURL: process.env.PETH_EXPLORER_API_URL || "http://50.28.84.113:4000/api/verify/etherscan",
-          browserURL: process.env.PETH_EXPLORER_BROWSER_URL || "http://50.28.84.113:5174",
+          apiURL: process.env.PETH_EXPLORER_API_URL || "https://api.ecnascan.com/api/verify/etherscan",
+          browserURL: process.env.PETH_EXPLORER_BROWSER_URL || "https://explorer.ecnascan.com",
         },
       },
       {
