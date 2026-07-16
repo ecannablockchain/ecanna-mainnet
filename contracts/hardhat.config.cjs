@@ -1,10 +1,9 @@
-require("@nomicfoundation/hardhat-toolbox");
+﻿require("@nomicfoundation/hardhat-toolbox");
 require("@openzeppelin/hardhat-upgrades");
 require("dotenv").config();
 
 const PRIVATE_KEY =
-  process.env.DEPLOYER_PRIVATE_KEY ||
-  "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+  process.env.DEPLOYER_PRIVATE_KEY || ""  // set DEPLOYER_PRIVATE_KEY in contracts/.env (never commit);
 const PETH_RPC_URL = process.env.PETH_RPC_URL || "https://rpc.ecnascan.com";
 const PETH_CHAIN_ID = parseInt(process.env.PETH_CHAIN_ID || "4111", 10);
 
