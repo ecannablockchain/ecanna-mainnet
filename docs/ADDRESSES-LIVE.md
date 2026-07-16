@@ -102,8 +102,11 @@ Older single-network helper: `scripts/client-go-live-reset.sh` (mainnet only).
 | API | https://api.ecnascan.com | https://testnetapi.ecnascan.com |
 | RPC | https://rpc.ecnascan.com | https://testnetrpc.ecnascan.com |
 | Website | https://ecnascan.com | (same site shows both) |
+| Faucet | — | https://testnetexplorer.ecnascan.com/faucet |
 
 Config check: `GET /api/v1/config` on each API.
+
+**Chainlist / GitHub recall:** [`docs/GITHUB-AND-CHAINLIST.md`](./GITHUB-AND-CHAINLIST.md) (PRs, private repos, timing).
 
 ---
 

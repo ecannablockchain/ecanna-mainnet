@@ -1,40 +1,40 @@
-# ECNASCAN — simple guide (sab ek page)
+# ECNASCAN — simple guide (one page)
 
-**Short idea:** Chain chalao → PETH **ek baar** deploy → `server/.env` mein token address likho → **API + indexer + explorer** chalao. Code badalne se **naya token mat banao** — sirf service restart.
+**Short idea:** Start the chain → deploy PETH **once** → put the token address in `server/.env` → run **API + indexer + explorer**. Changing app code does **not** mean deploying a new token — only restart services.
 
-**Fresh deploy vs resume (terminal):** `SETUP_NEW_LAPTOP.txt` section **0** — do hi flow (naya deploy / wahi se chalu).
+**Fresh deploy vs resume:** `SETUP_NEW_LAPTOP.txt` section **0**.
 
-**Aur detail:** `docs/LOCAL-DEV-COMMANDS.md` (commands), `docs/API-LIVE-DEPLOY.md` (live server + domain).
+**More detail:** `docs/LOCAL-DEV-COMMANDS.md` (commands), `docs/API-LIVE-DEPLOY.md` (live server + domain).
 
-### Repo mein kya set / align kar diya (default local ECNA)
+### Defaults aligned for local / live E Canna
 
-- `contracts/.env` — `PETH_RPC_URL`, `PETH_CHAIN_ID`, `RPC_URL` = **8545 / 4111**; **`DEPLOYER_PRIVATE_KEY` tum bharte ho** (khali mat chhodo deploy se pehle).
-- `server/.env` — RPC + chain + genesis addresses; **`PETH_TOKEN_ADDRESS` deploy ke baad tum paste karte ho**.
-- `apps/explorer/.env` — `VITE_*` local defaults.
+- `contracts/.env` — `PETH_RPC_URL`, `PETH_CHAIN_ID`, `RPC_URL` for **4111**; you must set **`DEPLOYER_PRIVATE_KEY`** before deploy.
+- `server/.env` — RPC + chain + genesis addresses; paste **`PETH_TOKEN_ADDRESS` after deploy**.
+- `apps/explorer/.env` — `VITE_*` defaults.
 
-**Live se suru se (ek file, order):** [`docs/LIVE-FROM-ZERO.md`](./LIVE-FROM-ZERO.md)
+**Full order from scratch:** [`docs/LIVE-FROM-ZERO.md`](./LIVE-FROM-ZERO.md)
 
 ---
 
-## 1) Native ECNA vs PETH (pehle yeh samjho)
+## 1) Native ECNA vs PETH (understand this first)
 
 | | Native **ECNA** | **PETH** (ERC-20) |
 |--|----------------|-------------------|
-| Kya hai | Chain ka **gas** / premine — Geth state | **Smart contract** |
-| Deploy? | Nahi — chain handle karti hai | **Ek baar** Hardhat deploy |
-| Address | Har wallet ka balance | **Ek proxy address** — `PETH_TOKEN_ADDRESS` |
+| What it is | Chain **gas** / premine — Geth state | **Smart contract** |
+| Deploy? | No — handled by the chain | **Once** via Hardhat |
+| Address | Each wallet’s balance | **One proxy address** — `PETH_TOKEN_ADDRESS` |
 
-**Galat:** har server code change par naya token deploy. **Sahi:** ek baar deploy, address `.env` mein fix; phir sirf restart.
+**Wrong:** redeploy a new token on every server code change. **Right:** deploy once, fix the address in `.env`, then only restart.
 
 ---
 
-## 2) ECNA chain (Geth Docker)
+## 2) E Canna chain (Geth Docker)
 
 **Folder:** `ecnachain/`
 
-| Cheez | Default |
-|-------|---------|
-| Host RPC | `https://rpc.ecnascan.com` |
+| Item | Default |
+|------|---------|
+| Public RPC | `https://rpc.ecnascan.com` |
 | Chain ID | **4111** |
 | Symbol | **ECNA** |
 
@@ -43,30 +43,30 @@ cd ecnachain
 docker compose up -d
 ```
 
-**Check (repo root):**
+**Check (from repo):**
 
 ```bash
 cd contracts
 npm run check:rpc
 ```
 
-**OK** = node chal raha hai, chain id **4111**.
+**OK** = node running, chain id **4111**.
 
-**MetaMask:** `ecnachain/metamask-network.json` se values copy karo.
+**MetaMask:** copy values from `ecnachain/metamask-network.json`.
 
-**Agar band ho:** `docker compose ps`, `docker compose logs`; port **8545** open; genesis/miner issue → `ecnachain` README / `reset-chain`.
+**If down:** `docker compose ps`, `docker compose logs`; confirm RPC harden / ports; genesis/miner issues → `ecnachain` README / `reset-chain`.
 
 ---
 
-## 3) Contracts + PETH (ek baar deploy)
+## 3) Contracts + PETH (deploy once)
 
 **Folder:** `contracts/`
 
-`contracts/.env.example` → **`contracts/.env`**
+Copy `contracts/.env.example` → **`contracts/.env`**
 
 - `PETH_RPC_URL` = e.g. `https://rpc.ecnascan.com`
 - `PETH_CHAIN_ID=4111`
-- `DEPLOYER_PRIVATE_KEY` = funded account (miner / gas)
+- `DEPLOYER_PRIVATE_KEY` = funded account (gas)
 - `TREASURY_ADDRESS`, `ADMIN_ADDRESS` = optional
 
 ```bash
@@ -75,29 +75,29 @@ npm run compile
 npm run deploy:local:full
 ```
 
-Output ka **PETH proxy (token address)** copy karo → `server/.env` → `PETH_TOKEN_ADDRESS=0x...`
+Copy the **PETH proxy (token address)** from output → `server/.env` → `PETH_TOKEN_ADDRESS=0x...`
 
-**File:** `contracts/deployments/localhost.json` (proxy address save)
+**File:** `contracts/deployments/localhost.json` (stores proxy address)
 
-**Rule:** dubara `deploy:local:full` mat chalao warna **naya token / naya address**.
+**Rule:** do not run `deploy:local:full` again unless you want a **new token / new address**.
 
 ---
 
-## 4) Server — API + Indexer (dono zaroori)
+## 4) Server — API + Indexer (both required)
 
-| Process | Kaam |
+| Process | Role |
 |---------|------|
-| **API** (`npm run dev` / `npm start`) | REST API — explorer UI is data se |
-| **Indexer** (`npm run indexer`) | Geth se blocks/txs → **database** |
+| **API** (`npm run dev` / `npm start`) | REST API — explorer UI reads this |
+| **Indexer** (`npm run indexer`) | Geth blocks/txs → **database** |
 
-Sirf API = explorer **khali** lag sakta hai kyunki txs **indexer** se aate hain.
+API only = explorer can look **empty** because txs come from the **indexer**.
 
-**Folder:** `server/` — `server/.env.example` → **`server/.env`**
+**Folder:** `server/` — copy `server/.env.example` → **`server/.env`**
 
-- `RPC_URL` = wahi Geth (`http://...:8545`)
+- `RPC_URL` = Geth HTTP
 - `RPC_CHAIN_ID` / `CHAIN_ID` = **4111**
-- `PETH_TOKEN_ADDRESS` = deploy ke baad **ek baar**
-- `ECNA_PRIMARY_ADDRESS` / `ECNA_NATIVE_MINT_ADDRESS` = genesis / tumhari setup
+- `PETH_TOKEN_ADDRESS` = set **once** after deploy
+- `ECNA_PRIMARY_ADDRESS` / `ECNA_NATIVE_MINT_ADDRESS` = genesis / your setup
 
 **DB:**
 
@@ -107,9 +107,9 @@ npm run db:generate
 npm run db:push
 ```
 
-Ya root: `npm run local:prepare`
+Or root: `npm run local:prepare`
 
-**Dev — do terminals:**
+**Dev — two terminals:**
 
 ```bash
 npm run dev -w server
@@ -119,9 +119,9 @@ npm run dev -w server
 npm run indexer -w server
 ```
 
-**Ya ek saath:** `npm run local:stack` (API + indexer + explorer + dashboard)
+**Or all together:** `npm run local:stack` (API + indexer + explorer + dashboard)
 
-**Indexer reset (kabhi):** `INDEXER_RESET_ONCE=1` ek baar `server/.env` mein, phir hata do.
+**Indexer wipe (rare):** set `INDEXER_RESET_ONCE=1` once in `server/.env`, start indexer, then remove the flag.
 
 ---
 
@@ -133,46 +133,44 @@ npm run indexer -w server
 - `VITE_RPC_URL` = `https://rpc.ecnascan.com`
 - `VITE_CHAIN_ID=4111`
 - `VITE_NATIVE_SYMBOL=ECNA`
-- `VITE_EXPLORER_URL` = jahan explorer khulega
+- `VITE_EXPLORER_URL` = where the explorer is served
 
-`VITE_*` **build time** par fix — production build se pehle set karo.
+`VITE_*` are fixed at **build time** — set them before a production build.
 
 ```bash
 npm run explorer:dev -w apps/explorer
 ```
 
-Live API ke liye: `docs/API-LIVE-DEPLOY.md`
+Live API: `docs/API-LIVE-DEPLOY.md`
 
 ---
 
-## 6) Remix se deploy
+## 6) Deploy from Remix
 
-ECNA chain **PUSH0 (Shanghai)** opcode support nahi karti. Remix **default** EVM = bytecode mein **PUSH0** → **Gas estimation failed**.
+This Clique Geth stack uses **shanghai** for deploy/verify (PUSH0 OK). If Remix defaults to a newer EVM than your node supports, you can get gas estimation failures — match Remix **EVM version** to **shanghai** (or the fork your node actually enables).
 
-**Fix:** Remix → Solidity Compiler → Advanced → **EVM version = paris** (ya **london**) → compile dubara → deploy.
+**Smoke test:** `contracts/contracts/remix/RemixSmokeTest.sol` (no imports)
 
-**Test:** `contracts/contracts/remix/RemixSmokeTest.sol` (no imports)
+**MetaMask:** Injected Provider; RPC `https://rpc.ecnascan.com`, Chain **4111**
 
-**MetaMask:** Injected Provider; RPC **8545**, Chain **4111**
+**PETH (UUPS):** Hardhat deploy is usually simpler in production; Remix needs proxy + initialize.
 
-**PETH (UUPS):** production mein Hardhat deploy zyada seedha; Remix par proxy + initialize chahiye.
-
-Zyada: `contracts/REMIX_LOCALHOST.txt`
+More: `contracts/REMIX_LOCALHOST.txt`
 
 ---
 
-## 7) Zero se live — order (steps)
+## 7) Zero-to-live order
 
-1. `git clone` → `cd EtherScanBlockchain` → `npm install`
+1. `git clone` → `npm install`
 2. `cd ecnachain` → `docker compose up -d`
 3. `cd contracts` → `npm run check:rpc` → OK
-4. `contracts/.env` set → `npm run compile` → `npm run deploy:local:full` → **proxy address** copy
+4. Set `contracts/.env` → `npm run compile` → `npm run deploy:local:full` → copy **proxy address**
 5. Root: `npm run local:prepare` (DB)
-6. `server/.env` — `RPC_URL`, `CHAIN_ID=4111`, `PETH_TOKEN_ADDRESS`, baaki `server/.env.example` jaisa
-7. `apps/explorer/.env` set
-8. `npm run local:stack` (ya API + indexer + explorer alag)
-9. Browser: explorer mostly `https://explorer.ecnascan.com` (console dekho)
+6. `server/.env` — `RPC_URL`, `CHAIN_ID=4111`, `PETH_TOKEN_ADDRESS`, rest from `server/.env.example`
+7. Set `apps/explorer/.env`
+8. `npm run local:stack` (or API + indexer + explorer separately)
+9. Browser: `https://explorer.ecnascan.com`
 
-**Live:** `docs/API-LIVE-DEPLOY.md` — API + indexer dono PM2/systemd; **Geth RPC** firewall se reachable.
+**Live:** `docs/API-LIVE-DEPLOY.md` — run API + indexer under PM2/systemd; keep public RPC behind the guard.
 
-**Problem?** Tx nahi → indexer + `RPC_URL` check. Remix fail → `EVM paris`. Naya token ban gaya → dubara deploy mat karo; purana address `.env` mein wapas lo.
+**Problems?** No txs → check indexer + `RPC_URL`. Remix fail → align EVM version. Accidental new token → do not keep redeploying; put the previous address back in `.env`.

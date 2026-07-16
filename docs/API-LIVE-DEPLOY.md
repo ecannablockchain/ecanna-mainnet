@@ -1,171 +1,171 @@
-# API live karna + URL ke baad kya change karein
+# Deploying the API live + changes after URLs are set
 
-Yeh doc **`server/` (REST API)** ko internet par chalane aur uske baad **explorer / dashboard** mein URLs update karne ke liye hai.
+This doc covers running **`server/` (REST API)** on the internet and updating URLs in **explorer / dashboard** afterward.
 
 ---
 
-## 1) Short answer — live par kya chalega?
+## 1) Short answer — what runs in production?
 
-| Cheez | Folder / process | Internet par kya dikhega |
+| Component | Folder / process | What appears on the internet |
 |--------|------------------|---------------------------|
-| **REST API** | `server/` → `npm run build` phir `npm start` | `https://api.tumhari-domain.com` (example) — port **4000** ya jo `PORT` set ho |
-| **Indexer** | `server/` → alag process `node dist/indexer.js` | Koi public URL nahi — sirf server ke andar chain se DB bharta hai |
-| **Chain (Geth)** | `ecnachain/` ya jo bhi RPC host ho | `https://rpc.tumhari-domain.com` (example) — **`RPC_URL`** yahi hota hai |
-| **Explorer UI** | `apps/explorer/` build → static host | `https://scan.tumhari-domain.com` — API se **alag** site |
-| **Dashboard** | `apps/dashboard/` build | `https://app.tumhari-domain.com` (optional) |
+| **REST API** | `server/` → `npm run build` then `npm start` | `https://api.ecnascan.com` — port **4000** or whatever `PORT` is set to |
+| **Indexer** | `server/` → separate process `node dist/indexer.js` | No public URL — only fills the DB from the chain inside the server |
+| **Chain (Geth)** | `ecnachain/` or whichever host runs RPC | `https://rpc.ecnascan.com` — this is what **`RPC_URL`** points to |
+| **Explorer UI** | `apps/explorer/` build → static host | `https://explorer.ecnascan.com` — a **separate** site from the API |
+| **Dashboard** | `apps/dashboard/` build | `https://dashboard.ecnascan.com` (optional) |
 
-**Important:** API live = sirf **`node dist/index.js`** nahi — **indexer bhi saath chalna zaroori hai**, warna naye blocks / txs DB mein nahi aayenge.
+**Important:** API live ≠ only **`node dist/index.js`** — the **indexer must also run**, otherwise new blocks / txs will not appear in the DB.
 
 ---
 
-## 2) Kaun si files matter karti hain? (reference)
+## 2) Which files matter? (reference)
 
-| File | Kab edit / use |
+| File | When to edit / use |
 |------|----------------|
-| **`server/.env`** | **Production** par yahi se saari settings (DB, RPC, port, public URLs) |
-| **`server/.env.example`** | Sample — naye server par copy karke `.env` banao |
-| **`server/prisma/schema.prisma`** | DB structure — deploy pe `prisma db push` / migrate |
+| **`server/.env`** | **Production** settings source (DB, RPC, port, public URLs) |
+| **`server/.env.example`** | Sample — copy on a new server to create `.env` |
+| **`server/prisma/schema.prisma`** | DB structure — run `prisma db push` / migrate on deploy |
 | **`server/package.json`** | `build`, `start`, `indexer` scripts |
-| **`apps/explorer/.env`** | Build **se pehle** — `VITE_API_URL`, `VITE_RPC_URL`, `VITE_EXPLORER_URL`, … |
-| **`apps/dashboard/.env`** | Build se pehle — chain + RPC + optional API |
-| **`apps/explorer/vite.config.ts`** | Sirf **local dev** proxy (`/api` → `https://api.ecnascan.com`) — **production build isse depend nahi** jab `VITE_API_URL` set ho |
+| **`apps/explorer/.env`** | **Before** build — `VITE_API_URL`, `VITE_RPC_URL`, `VITE_EXPLORER_URL`, … |
+| **`apps/dashboard/.env`** | Before build — chain + RPC + optional API |
+| **`apps/explorer/vite.config.ts`** | **Local dev** proxy only (`/api` → `https://api.ecnascan.com`) — **production build does not depend on this** when `VITE_API_URL` is set |
 
-Code mein abhi **CORS** almost open hai (`origin: true`) — matlab kisi bhi site se browser API call ho sakti hai. Baad mein tight karna ho to code change se whitelist lagani padegi.
+CORS is currently almost open in code (`origin: true`) — meaning any site can call the API from the browser. To tighten later, you will need a code change to add a whitelist.
 
 ---
 
-## 3) API ko live karne ke steps (server par)
+## 3) Steps to deploy the API live (on the server)
 
-### 3.1 Server (VPS) par
+### 3.1 On the server (VPS)
 
-1. **Node.js 20+** install karo.
-2. Repo clone / upload karo, root ya `server` folder mein `npm install` (workspace ho to root se `npm install`).
-3. **`server/.env`** banao — `server/.env.example` se copy karke niche wale variables set karo (section 4 dekho).
+1. Install **Node.js 20+**.
+2. Clone / upload the repo; run `npm install` at root or in `server/` (if using workspaces, run from root).
+3. Create **`server/.env`** — copy from `server/.env.example` and set the variables below (see section 4).
 4. Database:
    ```bash
    cd server
    npx prisma generate
    npx prisma db push
    ```
-   Live par `DATABASE_URL` **SQL Server** hona chahiye (see `server/.env.example`).
+   On live, `DATABASE_URL` must be **SQL Server** (see `server/.env.example`).
 5. Build:
    ```bash
    cd server
    npm run build
    ```
-6. API chalao:
+6. Start the API:
    ```bash
    cd server
    npm start
    ```
-   Default **`PORT=4000`**. Reverse proxy (Nginx) se `https://api...` → `https://api.ecnascan.com`.
-7. **Indexer** alag terminal / systemd service:
+   Default **`PORT=4000`**. Use a reverse proxy (Nginx) so `https://api.ecnascan.com` → `http://127.0.0.1:4000` (or your app port).
+7. **Indexer** in a separate terminal / systemd service:
    ```bash
    cd server
    node dist/indexer.js
    ```
-   (Build ke baad `dist/indexer.js` banta hai.)
+   (After build, `dist/indexer.js` is created.)
 
-### 3.2 Check
+### 3.2 Verify
 
-- Browser ya `curl`: `https://api.tumhari-domain.com/health` → `{"ok":true,"database":"up",...}` jaisa response.
-- `https://api.tumhari-domain.com/api/v1/config` → `rpcUrl`, `chainId`, `explorerUrl` dekho.
+- Browser or `curl`: `https://api.ecnascan.com/health` → response like `{"ok":true,"database":"up",...}`.
+- `https://api.ecnascan.com/api/v1/config` → check `rpcUrl`, `chainId`, `explorerUrl`.
 
 ### 3.3 Process manager (recommended)
 
-- **PM2** / **systemd** se dono processes auto-restart:
+- Use **PM2** / **systemd** so both processes auto-restart:
   - `ecna-api` → `node dist/index.js`
   - `ecna-indexer` → `node dist/indexer.js`  
-  Working directory: `server/`, env file wahi load honi chahiye (`load-env-deployment` / `.env`).
+  Working directory: `server/`; the env file must load from there (`load-env-deployment` / `.env`).
 
 ---
 
-## 4) `server/.env` — live values (kya kya set karna)
+## 4) `server/.env` — live values (what to set)
 
-| Variable | Local example | Live par kya likho |
+| Variable | Local example | What to set on live |
 |----------|---------------|---------------------|
 | **`DATABASE_URL`** | `sqlserver://host:1433;database=Db_ECNAChain;...` | SQL Server connection string (same format as `server/.env.example`) |
-| **`PORT`** | `4000` | Jo port app sune (Nginx ke peeche 4000 theek) |
-| **`RPC_URL`** | `https://rpc.ecnascan.com` | **Wahi URL jahan se Geth reachable hai** — same machine ho to internal IP; public ho to `https://rpc...` |
-| **`RPC_CHAIN_ID`** | `2` | Geth / genesis jaisa hi |
-| **`CHAIN_ID`** | `2` | Usually `RPC_CHAIN_ID` jaisa |
-| **`NATIVE_SYMBOL` / `NATIVE_NAME`** | `ECNA` | Tumhari chain token name |
-| **`PETH_TOKEN_ADDRESS`** | empty ya address | Agar featured token ho to lowercase `0x...` |
-| **`EXPLORER_PUBLIC_URL`** | `https://explorer.ecnascan.com` | **Public explorer site** — `https://scan.tumhari-domain.com` (trailing `/` mat) — `/api/v1/config` response mein `explorerUrl` aata hai |
-| **`CORS_ORIGIN`** | local URLs | Abhi code isse use nahi karta; future / notes ke liye rakh sakte ho |
+| **`PORT`** | `4000` | Port the app listens on (4000 behind Nginx is fine) |
+| **`RPC_URL`** | `https://rpc.ecnascan.com` | **The URL where Geth is reachable** — same machine: internal IP; public: `https://rpc.ecnascan.com` |
+| **`RPC_CHAIN_ID`** | `2` | Same as Geth / genesis |
+| **`CHAIN_ID`** | `2` | Usually same as `RPC_CHAIN_ID` |
+| **`NATIVE_SYMBOL` / `NATIVE_NAME`** | `ECNA` | Your chain token name |
+| **`PETH_TOKEN_ADDRESS`** | empty or address | If you have a featured token, lowercase `0x...` |
+| **`EXPLORER_PUBLIC_URL`** | `https://explorer.ecnascan.com` | **Public explorer site** — no trailing `/` — returned as `explorerUrl` in `/api/v1/config` |
+| **`CORS_ORIGIN`** | local URLs | Code does not use this yet; keep for future / notes |
 
-Optional indexer flags: `INDEXER_POLL_MS`, `INDEXER_START_AT_HEAD`, `INDEXER_MIN_BLOCK` — `ecnachain` / server README dekho.
+Optional indexer flags: `INDEXER_POLL_MS`, `INDEXER_START_AT_HEAD`, `INDEXER_MIN_BLOCK` — see `ecnachain` / server README.
 
 ---
 
-## 5) API live hone **ke baad** kya change karna hai?
+## 5) What to change **after** the API is live?
 
-Jab tumhare paas final URLs hon:
+When you have final URLs:
 
-- API: `https://api.tumhari-domain.com`
-- Explorer: `https://scan.tumhari-domain.com`
-- RPC (public): `https://rpc.tumhari-domain.com` (jo users / MetaMask ko doge)
+- API: `https://api.ecnascan.com`
+- Explorer: `https://explorer.ecnascan.com`
+- RPC (public): `https://rpc.ecnascan.com` (what you give users / MetaMask)
 
-### 5.1 `apps/explorer/.env` — phir se **build**
+### 5.1 `apps/explorer/.env` — then **rebuild**
 
-Yeh values **build time** par bundle mein jaati hain — `.env` badalne ke baad **`npm run build` dubara** zaroori.
+These values are baked in at **build time** — after changing `.env`, you **must run `npm run build` again**.
 
-| Variable | Empty / local | Live par |
+| Variable | Empty / local | Live |
 |----------|----------------|----------|
-| **`VITE_API_URL`** | khali → browser same-origin `/api` use karta hai (sirf jab explorer aur API **ek hi origin** par hon) | `https://api.tumhari-domain.com` (no trailing slash) |
-| **`VITE_RPC_URL`** | local Geth | **Public RPC** jo MetaMask / UI dikhaye |
-| **`VITE_CHAIN_ID`** | `4111` ya `31337` | Tumhari chain ID |
-| **`VITE_EXPLORER_URL`** | `https://explorer.ecnascan.com` | `https://scan.tumhari-domain.com` — verify success “new tab” / links ke liye |
-| **`VITE_CHAIN_NAME`**, **`VITE_NATIVE_*`** | jo bhi brand ho | Wahi rakho |
+| **`VITE_API_URL`** | empty → browser uses same-origin `/api` (only when explorer and API are on **the same origin**) | `https://api.ecnascan.com` (no trailing slash) |
+| **`VITE_RPC_URL`** | local Geth | **Public RPC** shown in MetaMask / UI |
+| **`VITE_CHAIN_ID`** | `4111` or `31337` | Your chain ID |
+| **`VITE_EXPLORER_URL`** | `https://explorer.ecnascan.com` | `https://explorer.ecnascan.com` — for verify success “new tab” / links |
+| **`VITE_CHAIN_NAME`**, **`VITE_NATIVE_*`** | your brand values | Keep as-is |
 
-Phir:
+Then:
 
 ```bash
 cd apps/explorer
 npm run build
 ```
 
-`dist/` ko apni hosting par deploy karo.
+Deploy `dist/` to your hosting.
 
-### 5.2 `apps/dashboard/.env` (agar dashboard use ho)
+### 5.2 `apps/dashboard/.env` (if using dashboard)
 
-Same idea: `VITE_RPC_URL`, `VITE_CHAIN_ID`, wagaira **public** values; agar dashboard API call kare to `VITE_API_URL` bhi set karo. Build dubara.
+Same idea: `VITE_RPC_URL`, `VITE_CHAIN_ID`, etc. use **public** values; if the dashboard calls the API, set `VITE_API_URL` too. Rebuild.
 
-### 5.3 `server/.env` dubara check
+### 5.3 Re-check `server/.env`
 
-- **`EXPLORER_PUBLIC_URL`** = deployed explorer ka **https** URL (taaki config API sahi link de).
+- **`EXPLORER_PUBLIC_URL`** = deployed explorer **https** URL (so the config API returns the correct link).
 
 ### 5.4 Chain / MetaMask
 
-- Users ko **public RPC** + **chain ID** do — `ecnachain/metamask-network.json` jaisa template update karke share karo.
+- Give users **public RPC** + **chain ID** — update and share a template like `ecnachain/metamask-network.json`.
 
 ---
 
-## 6) Ek page pe sab (same domain) optional
+## 6) Everything on one page (same domain) — optional
 
-Agar tum **Nginx** se aisa karo:
+If you configure **Nginx** like this:
 
-- `https://scan.tumhari-domain.com` → static explorer `dist/`
-- `https://scan.tumhari-domain.com/api` → proxy to `https://api.ecnascan.com`
+- `https://explorer.ecnascan.com` → static explorer `dist/`
+- `https://explorer.ecnascan.com/api` → proxy to `http://127.0.0.1:4000` (API)
 
-To explorer ke `.env` mein **`VITE_API_URL` khali** chhod kar bhi kaam ho sakta hai (same origin). Phir bhi **`VITE_EXPLORER_URL`** ko `https://scan.tumhari-domain.com` set karo taaki verify / links galat na hon.
+Then the explorer `.env` can leave **`VITE_API_URL` empty** (same origin). Still set **`VITE_EXPLORER_URL`** to `https://explorer.ecnascan.com` so verify / links are correct.
 
 ---
 
 ## 7) Quick checklist (copy)
 
-- [ ] Geth / RPC server se reachable (`RPC_URL`)
+- [ ] Geth / RPC reachable from server (`RPC_URL`)
 - [ ] `server/.env` production values + `EXPLORER_PUBLIC_URL`
-- [ ] `prisma generate` + `db push` (ya migrate)
+- [ ] `prisma generate` + `db push` (or migrate)
 - [ ] `npm run build` in `server/`
-- [ ] `npm start` (API) + `node dist/indexer.js` (indexer) — dono running
+- [ ] `npm start` (API) + `node dist/indexer.js` (indexer) — both running
 - [ ] `/health` OK
 - [ ] Explorer `.env` → `VITE_API_URL` / `VITE_RPC_URL` / `VITE_EXPLORER_URL` / `VITE_CHAIN_ID`
 - [ ] Explorer **rebuild** + deploy `dist/`
 
 ---
 
-## 8) Aur docs
+## 8) Related docs
 
 - Local commands: [`LOCAL-DEV-COMMANDS.md`](./LOCAL-DEV-COMMANDS.md)
 - Geth / chain deploy: [`../ecnachain/docs/DEPLOYMENT.md`](../ecnachain/docs/DEPLOYMENT.md)

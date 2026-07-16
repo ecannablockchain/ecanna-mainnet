@@ -1,0 +1,80 @@
+================================================================================
+WHICH ADDRESS GOES WHERE (ECNASCAN / E Canna repo)
+================================================================================
+
+Addresses below are listed by role. After deploy, many values land in
+`contracts/deployments/localhost.json` — the API can auto-read them when the
+matching fields in `server/.env` are left empty.
+
+--------------------------------------------------------------------------------
+1) TREASURY + ADMIN (PETH treasury / admin wallet)
+--------------------------------------------------------------------------------
+
+   contracts/.env
+      TREASURY_ADDRESS=0x...
+      ADMIN_ADDRESS=0x...
+
+   contracts/deployments/localhost.json   (written by deploy script)
+      "treasury": "0x..."
+      "admin": "0x..."
+
+   server/.env   (optional override; if empty, localhost.json is used)
+      TREASURY_ADDRESS=0x...
+
+   apps/dashboard/.env
+      VITE_TREASURY_ADDRESS=0x...
+
+--------------------------------------------------------------------------------
+2) PETH TOKEN CONTRACT (proxy — users interact with this)
+--------------------------------------------------------------------------------
+
+   contracts/deployments/localhost.json
+      "pethProxy": "0x..."
+
+   server/.env
+      PETH_TOKEN_ADDRESS=0x...     (optional override)
+
+   apps/dashboard/.env
+      VITE_PETH_TOKEN=0x...
+
+The explorer usually gets the token address from the API — if the server is
+configured correctly, you rarely need a separate PETH address in the explorer `.env`.
+
+--------------------------------------------------------------------------------
+3) DEPLOYER ACCOUNT (private key — deploy scripts only; never commit)
+--------------------------------------------------------------------------------
+
+   contracts/.env
+      DEPLOYER_PRIVATE_KEY=0x...
+
+   (Hardhat default accounts may also work for local-only — see contracts README.)
+
+--------------------------------------------------------------------------------
+4) RPC / API URL (not an address — “where to connect”)
+--------------------------------------------------------------------------------
+
+   server/.env
+      RPC_URL=https://rpc.ecnascan.com
+      # Same-host ops may use http://127.0.0.1:8545 instead
+
+   apps/explorer/.env
+      VITE_API_URL=https://api.ecnascan.com
+      VITE_RPC_URL=https://rpc.ecnascan.com
+      VITE_EXPLORER_URL=https://explorer.ecnascan.com
+
+   apps/dashboard/.env
+      VITE_RPC_URL=https://rpc.ecnascan.com
+      VITE_CHAIN_ID=4111
+      VITE_API_URL=https://api.ecnascan.com
+
+--------------------------------------------------------------------------------
+AFTER YOU CHANGE VALUES
+--------------------------------------------------------------------------------
+
+   - If you only edited contracts/deployments/localhost.json + contracts/.env:
+       a full redeploy is NOT required (for viewing / manual edits).
+   - If you ran a new deploy, the deploy script updates localhost.json itself.
+   - Restart the server so it reloads env (`npm run server:dev` / PM2 restart).
+   - Restart dashboard/explorer when `VITE_*` changes (rebuild for production).
+
+================================================================================

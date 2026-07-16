@@ -1,20 +1,18 @@
-Single-address setup (jo address tum doge, wahi sab jagah):
+Single-address Clique setup (use the same address everywhere you intend):
 
-- ecnachain/.env: ECNA_PRIMARY_ADDRESS = wahi address
+- ecnachain/.env: ECNA_PRIMARY_ADDRESS = that address
 
 - server/.env: same ECNA_PRIMARY_ADDRESS (treasury + explorer “miner” label)
 
-- genesis.json: extraData signer + coinbase + alloc = wahi address (genesis change = fresh datadir)
+- genesis.json: extraData signer + coinbase + alloc = that address (changing genesis requires a fresh datadir)
 
-- docker/miner-private.hex: usi address ki raw private key (hex, no 0x) — bina iske sealing nahi chalegi
-  (repo mein default Hardhat dev key hai — genesis signer 0x3e90… hai to is file ko usi address ki key se replace karo, warna seal match nahi karega)
+- docker/miner-private.hex: raw private key for that address (64 hex chars, no 0x) — sealing will not work without it
+  (replace any placeholder key so it matches the genesis signer, or seals will not match)
 
-- Funds (native): block reward + fees MINER_ETHERBASE par (compose = ECNA_PRIMARY_ADDRESS). Apni tx ka amount hamesha tx ke “To” par.
+- Funds (native): block rewards + fees go to MINER_ETHERBASE (compose = ECNA_PRIMARY_ADDRESS). User transfer amounts always go to the tx “To” address.
 
-- Naya address: genesis mein coinbase + alloc + extraData signer teeno update. Clique order: 32 byte vanity + 20 byte signer + 65 byte seal (zeros) — geth source (extraVanity + signers + extraSeal). Nahi to “unauthorized signer”. Phir `.\reset-chain.ps1` ya geth + keystore wipe.
+- New address: update coinbase + alloc + extraData signer in genesis. Clique extraData order: 32-byte vanity + 20-byte signer + 65-byte seal (zeros) — see geth (extraVanity + signers + extraSeal). Wrong layout → “unauthorized signer”. Then run `.\reset-chain.ps1` or wipe geth + keystore.
 
-- Problem: blocks / funds nahi — (1) miner-private.hex mein leading space mat rakho, sirf 64 hex. (2) Purana galat import: container band karke `data/validator1/keystore` folder delete karo + `data/validator1/geth` delete karo, phir `docker compose up` (fresh import + init).
+- No blocks / no funds: (1) no leading spaces in miner-private.hex — exactly 64 hex. (2) Bad prior import: stop the container, delete `data/validator1/keystore` and `data/validator1/geth`, then `docker compose up` (fresh import + init).
 
-- Sabse common: purani chain chal rahi hai (genesis.json update ke baad bhi). `ecnachain` folder se: `.\reset-chain.ps1` chalao — phir MetaMask mein RPC `https://rpc.ecnascan.com`, Chain ID `4111`, tumhara address `0x3e90…` — genesis alloc balance dikhega.
-
-
+- Most common issue: old chain data still running after editing genesis.json. From `ecnachain/`: run `.\reset-chain.ps1` — then in MetaMask use RPC `https://rpc.ecnascan.com`, Chain ID `4111`, and your funded address to see the genesis alloc balance.

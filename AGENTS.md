@@ -109,10 +109,26 @@ SSH credentials (local only, gitignored): `scripts/deploy-server.credentials.loc
 - Wipe only one network’s SQL while leaving the other inconsistent after a dual genesis reset
 - Commit `.env`, `miner-private.hex`, `faucet-private.hex`, or `DEPLOY-SERVER.local.md`
 
+## GitHub + Chainlist (status / recall)
+
+Full write-up: **[`docs/GITHUB-AND-CHAINLIST.md`](docs/GITHUB-AND-CHAINLIST.md)**
+
+| Item | Value |
+|------|--------|
+| GitHub user | **ecannablockchain** |
+| Private mainnet code | https://github.com/ecannablockchain/ecanna-mainnet (**public**) |
+| Private testnet code | https://github.com/ecannablockchain/ecanna-testnet (**public**) |
+| Chainlist.org PR | https://github.com/DefiLlama/chainlist/pull/2935 (**merged** — 4111 + 4112 live) |
+| ethereum-lists PR | https://github.com/ethereum-lists/chains/pull/8519 (still open) |
+
+On https://chainlist.org: search **4111** = mainnet; search **4112** + **Include Testnets** = testnet.  
+Details: `docs/GITHUB-AND-CHAINLIST.md`. PAT / password: gitignored `scripts/github-credentials.local.json` only.
+
 ## Naming convention checklist (PRs / agent edits)
 
 - UI / env defaults: **E Canna** / **ECNA** / **E Canna Testnet** / **tECNA**
 - Chain display: **E Canna Mainnet** / **E Canna Testnet**
 - Supply copy: **1 Crore (10,000,000)** not 1B
 - Docs point to `docs/ADDRESSES-LIVE.md` for addresses
-- New temp files under `%TEMP%\ecna-*` for deploys — delete after use; **never** leave `*.log` / `*.tgz` in the repo root
+- New temp files under `%TEMP%\ecna-*` or `.tmp-github/` — delete after use; **never** leave `*.log` / `*.tgz` in the repo root
+- Never commit credentials; GitHub product repos must stay secret-free even when made public

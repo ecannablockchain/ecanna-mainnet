@@ -1,63 +1,63 @@
-Remix se ECNA par deploy — poora sahi flow (READ THIS)
-======================================================
+Deploying to E Canna from Remix — correct flow (READ THIS)
+==========================================================
 
-!!! GAS ESTIMATION FAILED / "missing revert data" — PEHLE YEH DEKHO !!!
+!!! GAS ESTIMATION FAILED / "missing revert data" — CHECK THIS FIRST !!!
 -----------------------------------------------------------------------
-ECNA Geth chain **Shanghai fork ke pehle** hai — bytecode mein **PUSH0** (EIP-3855) allowed nahi.
-
-Remix default compiler kabhi **shanghai/cancun** EVM use karta hai → deploy fail / estimateGas error.
+Match Remix **EVM version** to this chain. ECNASCAN deploy/verify target is **shanghai**
+(PUSH0 OK). If Remix uses a newer EVM than your node, deploy / estimateGas can fail.
 
 FIX (Remix): Left panel **Solidity Compiler** → **Advanced Configurations** →
-**EVM Version** = **paris** (ya **london**). Phir dubara **Compile** → **Deploy**.
+**EVM Version** = **shanghai** (or **paris** / **london** if you intentionally target an older fork).
+Then **Compile** again → **Deploy**.
 
-Bina iske chhota sa bhi contract deploy nahi hoga — MetaMask / RPC sahi hone ke baad bhi.
+Without a matching EVM version, even a tiny contract may fail to deploy — even when MetaMask / RPC look fine.
 
 
-PEHLE YEH TRY KARO (1 minute)
------------------------------
-Repo mein: contracts/contracts/remix/RemixSmokeTest.sol
-- Koi import nahi — sirf yeh file Remix mein paste / open karo.
+TRY THIS FIRST (about 1 minute)
+--------------------------------
+Repo file: contracts/contracts/remix/RemixSmokeTest.sol
+- No imports — paste / open that file in Remix.
 - Compiler 0.8.24+ → Injected Provider - MetaMask → Deploy.
-- Yeh chal gaya = RPC + chain + balance OK. Phir apna bada contract try karo.
+- If this works = RPC + chain + balance are OK. Then try your real contract.
 
 
 CODE / CONFIG (repo)
 --------------------
 1) ecnachain/metamask-network.json — chainId 0x100f (4111); rpc https://rpc.ecnascan.com
-2) contracts/hardhat.config.cjs — PETH_RPC_URL 8545, PETH_CHAIN_ID 4111
-3) ecnachain/docker/geth-entrypoint.sh — --http.corsdomain "*", --http.vhosts "*", --ws.origins "*"
-   (Docker container RESTART karo taake naye flags load hon)
-4) contracts/scripts/check-rpc.cjs — cd contracts && npm run check:rpc → OK hona chahiye
+2) contracts/hardhat.config.cjs — PETH_RPC_URL / PETH_CHAIN_ID 4111
+3) ecnachain/docker/geth-entrypoint.sh — CORS / vhosts as configured for your environment
+   (restart the Docker container after changing flags)
+4) contracts/scripts/check-rpc.cjs — cd contracts && npm run check:rpc → should be OK
 
 
-TUMHARI SIDE (order)
---------------------
-A) Local node on port 8545 (Hardhat / Anvil / Geth).  npm run check:rpc  → OK
+YOUR STEPS (order)
+------------------
+A) Node reachable (Hardhat / Anvil / Geth).  npm run check:rpc  → OK
 
-B) MetaMask network (haath se)
+B) MetaMask network (manual)
    - RPC:     https://rpc.ecnascan.com
    - Chain ID: 4111
    - Symbol:  ECNA
-   Purani galat network (wrong chain id / wrong port) delete ya edit karo.
+   Delete or edit any old wrong network (wrong chain id / port).
 
-C) Balance: jo account deploy kare us par ECNA ho.
-   ecnachain/.env → ECNA_PRIMARY_ADDRESS = miner; usi ki key docker/miner-private.hex → MetaMask import.
+C) Balance: the deploying account needs ECNA for gas.
+   ecnachain/.env → ECNA_PRIMARY_ADDRESS = miner; import the matching key carefully (never commit it).
 
-D) Remix: Injected Provider - MetaMask (WalletConnect mat; Remix VM mat)
+D) Remix: Injected Provider - MetaMask (prefer not WalletConnect / Remix VM for this flow)
 
-E) Gas estimation fail: nonce reset (MetaMask Advanced); ya zyada ECNA; pehle RemixSmokeTest se verify
+E) Gas estimation still fails: reset nonce (MetaMask Advanced); ensure enough ECNA; verify with RemixSmokeTest first
 
 
-OPTION — Hardhat node alag (8545 / 31337)
------------------------------------------
-Sirf `npx hardhat node`. ECNA Docker ke saath mix mat karo.
+OPTION — separate Hardhat node (8545 / 31337)
+---------------------------------------------
+Use only `npx hardhat node`. Do not mix with the E Canna Docker stack on the same ports.
 
 
 PETH.sol
 --------
-UUPS — proxy + initialize. Simple contracts jab network OK hon tab deploy.
+UUPS — proxy + initialize. Deploy simple contracts once the network is confirmed OK.
 
 
 Explorer
 --------
-Deploy ke baad explorer par contract dikhega.
+After deploy, the contract should appear on the explorer once the indexer has caught up.

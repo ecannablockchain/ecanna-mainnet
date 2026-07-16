@@ -1,18 +1,18 @@
-# Local dev — saari commands ek jagah (save / copy-paste)
+# Local dev — all commands in one place (save / copy-paste)
 
-Naye PC par ya baad mein dekhne ke liye yahi file use karo. Repo root = jahan `package.json` (workspaces) hai.
+Use this file on a new PC or whenever you need a quick reference. Repo root = where `package.json` (workspaces) lives.
 
 **Full operations guide (first setup, resume, server migration):** [`SETUP_NEW_LAPTOP.txt`](../SETUP_NEW_LAPTOP.txt)  
 **Server migration runbook:** [`SERVER-MIGRATION.md`](./SERVER-MIGRATION.md)
 
 ---
 
-## 0) Do flows — fresh deploy vs resume
+## 0) Two flows — fresh deploy vs resume
 
-Har jagah pehle:
+Everywhere, start with:
 
 ```bash
-cd /path/to/Blockchain   # apna path
+cd /path/to/Blockchain   # your path
 ```
 
 ### Flow A — **fresh deploy** (clean chain + deploy PETH + treasury + clean explorer index)
@@ -111,20 +111,20 @@ npm run local:stack
 
 ---
 
-## 1) Pehli baar (har naye system par)
+## 1) First time (on every new system)
 
-**Windows (recommended):** repo root se `.\bootstrap-full.ps1` — `.env` copy + `npm install` + Prisma + compile.
+**Windows (recommended):** from repo root run `.\bootstrap-full.ps1` — copies `.env` + `npm install` + Prisma + compile.
 
-**Har OS:**
+**All OS:**
 
 ```bash
 cd /path/to/repo
 npm run local:bootstrap
 ```
 
-Pehle **env files** (example se copy), agar bootstrap script use na ho:
+If you are not using the bootstrap script, copy **env files** from examples first:
 
-| File | Kaam |
+| File | Purpose |
 |------|------|
 | `server/.env.example` → `server/.env` | API, RPC, chain id, indexer |
 | `contracts/.env.example` → `contracts/.env` | deploy / treasury |
@@ -133,7 +133,7 @@ Pehle **env files** (example se copy), agar bootstrap script use na ho:
 
 Local defaults: **`https://rpc.ecnascan.com`**, chain **4111** (`server/.env` + `hardhat.config.cjs`).
 
-**Database schema** `local:bootstrap` ke andar hai; alag se:
+**Database schema** is included in `local:bootstrap`; separately:
 
 ```bash
 npm run server:db:push
@@ -147,9 +147,9 @@ npm run server:db:push
 npm run local:node
 ```
 
-RPC `https://rpc.ecnascan.com`, chain **4111**. Empty blocks ~**3s** par bhi mine hote hain (explorer chain head); txs **turant** mine.
+RPC `https://rpc.ecnascan.com`, chain **4111**. Empty blocks mine every ~**3s** (explorer chain head); txs mine **immediately**.
 
-Sirf tx par block: `npm run node:instant -w contracts`.
+Blocks only on tx: `npm run node:instant -w contracts`.
 
 `server/.env`: `RPC_URL`, `RPC_CHAIN_ID=4111`, `CHAIN_ID=4111`.
 
@@ -177,38 +177,38 @@ npm run deploy:local:full -w contracts
 
 ---
 
-## 5) Treasury ko native ECNA (100 crore = visible tx)
+## 5) Fund treasury with native ECNA (100 crore = visible tx)
 
-`contracts/.env` mein:
+In `contracts/.env`:
 
-- `TREASURY_ADDRESS=0x...` (jis address par chahiye)
+- `TREASURY_ADDRESS=0x...` (address to fund)
 - `FUND_ECNA=1000000000` (whole units)
 
-Phir (**Hardhat node chal raha ho**):
+Then (**Hardhat node must be running**):
 
 ```bash
 npm run fund:treasury -w contracts
 ```
 
-- Default: **on-chain transfer** → Latest transactions mein dikhega.
-- Sirf balance, tx nahi: `FUND_SILENT=1` (contracts/.env).
+- Default: **on-chain transfer** → shows in Latest transactions.
+- Balance only, no tx: `FUND_SILENT=1` (contracts/.env).
 
 ---
 
-## 6) Explorer DB saaf (purane blocks/txs hatao, chain same)
+## 6) Clear explorer DB (remove old blocks/txs, chain unchanged)
 
 ```bash
 npm run server:clear-indexed
 ```
 
-Phir **indexer + API restart**.  
-`INDEXER_START_AT_HEAD=1` ho to naye blocks ke baad hi naya data dikhega.
+Then **restart indexer + API**.  
+If `INDEXER_START_AT_HEAD=1`, new data appears only after new blocks arrive.
 
 ---
 
 ## 7) Windows PowerShell note
 
-`&&` kabhi-kabhi issue ho to alag lines:
+If `&&` causes issues, use separate lines:
 
 ```powershell
 Set-Location C:\path\to\Deepak
@@ -218,9 +218,9 @@ npm run server:db:push
 
 ---
 
-## 8) Jis address par native chahiye — code change nahi
+## 8) Native ECNA to a specific address — no code change
 
-Bas **dono** jagah same address:
+Use the **same** address in both places:
 
 - `contracts/.env` → `TREASURY_ADDRESS`
 - `server/.env` → `TREASURY_ADDRESS`
@@ -233,8 +233,8 @@ Amount: `FUND_ECNA=...`
 
 | Variable | Meaning |
 |----------|---------|
-| `INDEXER_START_AT_HEAD=1` | Purani chain backfill mat karo; home jab tak khali jab tak naye block na aayein |
-| `INDEXER_RESET_ONCE=1` | **Ek baar** indexer start par saari indexed tables wipe (phir .env se hata do) |
+| `INDEXER_START_AT_HEAD=1` | Do not backfill old chain; home stays empty until new blocks arrive |
+| `INDEXER_RESET_ONCE=1` | **Once** on indexer start, wipe all indexed tables (then remove from `.env`) |
 
 ---
 
@@ -248,14 +248,14 @@ Same as **§0**. Summary:
 
 ---
 
-## 10) Geth **ecnachain** (Docker) — alag path
+## 10) Geth **ecnachain** (Docker) — separate path
 
 ```bash
 npm run ecnachain:docker
 ```
 
 Chain **4111**, details: `ecnachain/README.md`.  
-`server/.env`: `CHAIN_ID=4111`, `RPC_CHAIN_ID=4111`, same RPC jo compose deta hai.
+`server/.env`: `CHAIN_ID=4111`, `RPC_CHAIN_ID=4111`, same RPC as compose provides.
 
 ---
 
@@ -281,10 +281,10 @@ Terminal 1: npm run local:node:persistent
 Terminal 2: npm run local:stack
 ```
 
-Is file ka path: **`docs/LOCAL-DEV-COMMANDS.md`** — Git mein commit karo taake har machine / teammate ke paas same commands rahein.
+This file lives at **`docs/LOCAL-DEV-COMMANDS.md`** — commit to Git so every machine / teammate has the same commands.
 
 ---
 
 ## API live + URLs (production)
 
-Poora step-by-step: **[`docs/API-LIVE-DEPLOY.md`](./API-LIVE-DEPLOY.md)** — kaun si file, kya env, API + indexer dono, live ke baad `VITE_*` changes.
+Full step-by-step: **[`docs/API-LIVE-DEPLOY.md`](./API-LIVE-DEPLOY.md)** — which files, which env vars, API + indexer both, and `VITE_*` changes after go-live.
