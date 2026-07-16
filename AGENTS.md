@@ -1,6 +1,9 @@
 # Agent / developer briefing (ECNASCAN)
 
-Read this first before changing chain, deploy, faucet, or RPC code.
+**Read this first** before changing chain, deploy, faucet, RPC, or GitHub code.
+
+This laptop folder is the **full ops monorepo** (includes secrets in gitignored files).  
+Public GitHub repos are **sanitized mirrors** — never copy `.env` / `*.hex` / SSH passwords into them.
 
 ## Product naming (use these exact strings)
 
@@ -16,7 +19,7 @@ Read this first before changing chain, deploy, faucet, or RPC code.
 | Mainnet supply (genesis) | **1 Crore** = **10,000,000** ECNA |
 | EVM for Remix / Hardhat / verify | **shanghai** (PUSH0 OK; **not** cancun/prague) |
 
-Do **not** use obsolete labels: “ECNA Chain”, “ECNA Smart Chain”, “1 billion / 1B” premine, Cancun as default deploy EVM.
+Do **not** use obsolete labels: “ECNA Chain”, “ECNA Smart Chain”, “1 billion / 1B” premine, Cancun as default deploy EVM, or the old host IP `50.28.84.113`.
 
 ## Live networks (same DO server)
 
@@ -31,14 +34,24 @@ Do **not** use obsolete labels: “ECNA Chain”, “ECNA Smart Chain”, “1 b
 | Explorer | https://explorer.ecnascan.com | https://testnetexplorer.ecnascan.com |
 | PM2 | `ecna-api`, `ecna-indexer` | `ecna-api-testnet`, `ecna-indexer-testnet` |
 | Faucet | **off** | **on** (~1000 tECNA / wallet / 24h) |
+| P2P | `168.144.69.102:30303` | `168.144.69.102:30313` |
 
 **Server:** `168.144.69.102` · Domain: `ecnascan.com`
 
-## Canonical address book
+## Where to look (no confusion)
 
-→ **[`docs/ADDRESSES-LIVE.md`](docs/ADDRESSES-LIVE.md)** (treasuries, miner, faucet, key file paths).
-
-→ Full KT: **[`docs/KT-ECNA-MAINNET-TESTNET.md`](docs/KT-ECNA-MAINNET-TESTNET.md)**
+| Need | Open this |
+|------|-----------|
+| Short briefing (this file) | `AGENTS.md` |
+| Live addresses + RPC harden | [`docs/ADDRESSES-LIVE.md`](docs/ADDRESSES-LIVE.md) |
+| Full KT | [`docs/KT-ECNA-MAINNET-TESTNET.md`](docs/KT-ECNA-MAINNET-TESTNET.md) |
+| GitHub + Chainlist + exchange links | [`docs/GITHUB-AND-CHAINLIST.md`](docs/GITHUB-AND-CHAINLIST.md) |
+| Exchange pack (mainnet) | [`docs/EXCHANGE-LISTING.md`](docs/EXCHANGE-LISTING.md) |
+| Exchange pack (testnet) | [`docs/EXCHANGE-LISTING-TESTNET.md`](docs/EXCHANGE-LISTING-TESTNET.md) |
+| Zero-to-live order (English) | [`docs/LIVE-FROM-ZERO.md`](docs/LIVE-FROM-ZERO.md) |
+| Simple one-pager | [`docs/SIMPLE-GUIDE.md`](docs/SIMPLE-GUIDE.md) |
+| SSH deploy secrets (local only) | `scripts/deploy-server.credentials.local.json` (**gitignored**) |
+| GitHub PAT (local only) | `scripts/github-credentials.local.json` (**gitignored**) |
 
 ### Quick live addresses
 
@@ -64,13 +77,8 @@ Live protection:
 Allowed publicly: `eth_sendRawTransaction` (MetaMask, faucet).  
 Blocked publicly: `eth_sendTransaction`, `eth_sign`, `personal_*`, `miner_*`, …
 
-Scripts:
-
-- `scripts/rpc-public-guard.mjs`
-- `scripts/harden-rpc-live.sh`
-- `ecosystem.rpc-guard.config.cjs`
-
-Re-apply harden on server: `bash /opt/ecnascan/scripts/harden-rpc-live.sh`
+Scripts: `scripts/rpc-public-guard.mjs`, `scripts/harden-rpc-live.sh`, `ecosystem.rpc-guard.config.cjs`  
+Re-apply: `bash /opt/ecnascan/scripts/harden-rpc-live.sh`
 
 ## Deploy commands (from laptop repo root)
 
@@ -80,20 +88,33 @@ Re-apply harden on server: `bash /opt/ecnascan/scripts/harden-rpc-live.sh`
 | Frontends only | `.\scripts\deploy-frontends.ps1` |
 | **Wipe both chains + SQL + genesis + harden + publish** | `.\scripts\deploy-fresh-golive.ps1` |
 
-SSH credentials (local only, gitignored): `scripts/deploy-server.credentials.local.json`, `scripts/DEPLOY-SERVER.local.md`
-
-## Repo map
+## Repo map (this laptop monorepo)
 
 | Path | Role |
 |------|------|
-| `ecnachain/` | Mainnet genesis + Geth Docker |
-| `testnet/ecnachain/` | Testnet genesis + Geth Docker |
-| `server/` | API + indexer (shared build; two env files) |
+| `ecnachain/` | Mainnet genesis + Geth Docker + `static-nodes.json` |
+| `testnet/ecnachain/` | Testnet genesis + Geth Docker + `static-nodes.json` |
+| `server/` | API + indexer (shared build; two env files on server) |
 | `apps/explorer` | Explorer UI |
 | `apps/website` | Marketing site |
 | `apps/dashboard` | Wallet dashboard |
 | `contracts/` | Hardhat / PETH |
-| `docs/` | KT, addresses, runbooks |
+| `docs/` | KT, addresses, runbooks (English) |
+
+## GitHub (public, secret-free) + Chainlist
+
+| Item | Value |
+|------|--------|
+| GitHub user | **ecannablockchain** |
+| Mainnet repo | https://github.com/ecannablockchain/ecanna-mainnet (**public**) |
+| Testnet repo | https://github.com/ecannablockchain/ecanna-testnet (**public**) |
+| Chainlist.org | https://github.com/DefiLlama/chainlist/pull/2935 (**merged** — 4111 + 4112 live) |
+| ethereum-lists | https://github.com/ethereum-lists/chains/pull/8519 (still open) |
+
+On https://chainlist.org: search **4111** = mainnet; search **4112** + **Include Testnets** = testnet.  
+Details: `docs/GITHUB-AND-CHAINLIST.md`.
+
+**Audited:** public Git has no SSH passwords, miner/faucet keys, GitHub PAT, or live SQL secrets. Only public URLs, addresses, example placeholders, and peer enodes.
 
 ## Faucet behaviour (testnet)
 
@@ -107,28 +128,15 @@ SSH credentials (local only, gitignored): `scripts/deploy-server.credentials.loc
 - Expose Geth `8545`/`18545` on `0.0.0.0`
 - Point nginx public RPC straight at Geth (bypass guard)
 - Wipe only one network’s SQL while leaving the other inconsistent after a dual genesis reset
-- Commit `.env`, `miner-private.hex`, `faucet-private.hex`, or `DEPLOY-SERVER.local.md`
+- Commit `.env`, `miner-private.hex`, `faucet-private.hex`, `password-dev.txt`, or `*.local.json` / `DEPLOY-SERVER.local.md`
+- Use obsolete host `50.28.84.113` in docs or examples — use `*.ecnascan.com`
+- Leave `%TEMP%\ecna-*` or `.tmp-github/` clones after GitHub work
 
-## GitHub + Chainlist (status / recall)
-
-Full write-up: **[`docs/GITHUB-AND-CHAINLIST.md`](docs/GITHUB-AND-CHAINLIST.md)**
-
-| Item | Value |
-|------|--------|
-| GitHub user | **ecannablockchain** |
-| Private mainnet code | https://github.com/ecannablockchain/ecanna-mainnet (**public**) |
-| Private testnet code | https://github.com/ecannablockchain/ecanna-testnet (**public**) |
-| Chainlist.org PR | https://github.com/DefiLlama/chainlist/pull/2935 (**merged** — 4111 + 4112 live) |
-| ethereum-lists PR | https://github.com/ethereum-lists/chains/pull/8519 (still open) |
-
-On https://chainlist.org: search **4111** = mainnet; search **4112** + **Include Testnets** = testnet.  
-Details: `docs/GITHUB-AND-CHAINLIST.md`. PAT / password: gitignored `scripts/github-credentials.local.json` only.
-
-## Naming convention checklist (PRs / agent edits)
+## Naming / PR checklist
 
 - UI / env defaults: **E Canna** / **ECNA** / **E Canna Testnet** / **tECNA**
 - Chain display: **E Canna Mainnet** / **E Canna Testnet**
 - Supply copy: **1 Crore (10,000,000)** not 1B
-- Docs point to `docs/ADDRESSES-LIVE.md` for addresses
-- New temp files under `%TEMP%\ecna-*` or `.tmp-github/` — delete after use; **never** leave `*.log` / `*.tgz` in the repo root
-- Never commit credentials; GitHub product repos must stay secret-free even when made public
+- Docs in **English** (ops guides were converted from Hinglish)
+- Addresses → `docs/ADDRESSES-LIVE.md`
+- After any agent temp files: delete them; never leave `*.log` / `*.tgz` in the repo root
