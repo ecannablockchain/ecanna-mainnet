@@ -30,7 +30,7 @@ Do **not** use obsolete labels: “ECNA Chain”, “ECNA Smart Chain”, “1 b
 3. Exchange nodes must wipe old `data/`, re-init, and use the **current** `static-nodes.json` from GitHub — old enodes (`e11f51…` mainnet / `9ad0e0…` testnet) are **obsolete**.
 4. `eth.syncing` with `currentBlock: 0` while `highestBlock > 0` is normal early sync — not an error. Empty `admin.peers` after `addPeer` usually means **wrong enode** or firewall.
 5. Sync-only nodes: `--syncmode full`; ignore `etherbase must be explicitly specified` (non-miner).
-6. Remix/Hardhat/verify: **EVM = london**. Solidity 0.8.20+ defaults to shanghai/PUSH0 unless overridden. Product UI (explorer + website) shows this banner — see [`docs/DEPLOY-CONTRACTS.md`](docs/DEPLOY-CONTRACTS.md).
+6. Remix/Hardhat/verify: **EVM = london**. Show guidance on **website + faucet + verify** — not on explorer home. See [`docs/DEPLOY-CONTRACTS.md`](docs/DEPLOY-CONTRACTS.md).
 
 ## Live networks (same DO server)
 

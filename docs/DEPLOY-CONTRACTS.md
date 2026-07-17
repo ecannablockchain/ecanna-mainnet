@@ -36,9 +36,12 @@ chain would be a planned redesign/wipe, not a silent fork.
 
 ## Where this is shown in product UI
 
-- Explorer home banner + Verify page + footer note  
-- Website: network overview, developer tooling, FAQ, build CTA  
-- Docs: `AGENTS.md`, `docs/KT-ECNA-MAINNET-TESTNET.md`, this file  
+- **Website** ([ecnascan.com](https://ecnascan.com)): Network reference (RPC boxes), Wallet setup, Developer tooling, FAQ, Build CTA, Network overview  
+- **Testnet faucet** page (explorer): deploy tip banner  
+- **Verify & Publish** (explorer): EVM london reminder for verifiers  
+- Docs: `AGENTS.md`, KT, this file  
+
+Do **not** put a large london banner on explorer home (keeps casual users focused on blocks/txs).
 
 ## Agent checklist
 

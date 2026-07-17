@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { DataRow, InfoPanel } from "../components/InfoPanel";
 import { PanelIcon } from "../components/BlockchainIcons";
+import { DeployEvmNotice } from "../components/DeployEvmNotice";
 import { allNetworks, type NetworkProfile } from "../lib/networks";
 import { token20Label } from "../lib/chainBranding";
 
@@ -26,6 +27,7 @@ function NetworkPanel({ net }: { net: NetworkProfile }) {
       <DataRow label="Native name" value={net.nativeName} copyable mono={false} />
       <DataRow label="Decimals" value="18" copyable required />
       <DataRow label="RPC URL" value={net.rpcUrl} copyable required />
+      <DataRow label="EVM (Solidity / Remix)" value="london (not default / shanghai)" mono={false} />
       <DataRow label="REST API" value={net.apiUrl} copyable href={net.apiUrl} />
       <DataRow label="Block explorer" value={net.explorerUrl} copyable href={net.explorerUrl} />
       {net.faucetUrl ? (
@@ -59,8 +61,10 @@ export function NetworkReference() {
           </h2>
           <p className="mt-3 text-sm leading-relaxed text-[var(--card-muted)] sm:text-base">
             One marketing site — two networks. Use <strong>Mainnet (live)</strong> for production and{" "}
-            <strong>Testnet</strong> for development. Free test coins via the testnet faucet.
+            <strong>Testnet</strong> for development. Free test coins via the testnet faucet. When deploying Solidity,
+            always set compiler EVM to <strong>london</strong>.
           </p>
+          <DeployEvmNotice className="mt-4" />
           <div className="mt-6 flex flex-wrap gap-2">
             {allNetworks.map((n) => (
               <button
@@ -90,6 +94,7 @@ export function NetworkReference() {
             <DataRow label="Testnet chain ID" value={allNetworks[1]!.chainId} copyable />
             <DataRow label="Live RPC" value={allNetworks[0]!.rpcUrl} copyable />
             <DataRow label="Testnet RPC" value={allNetworks[1]!.rpcUrl} copyable />
+            <DataRow label="Solidity EVM" value="london (Remix + Hardhat)" mono={false} />
             <DataRow label="Live explorer" value={allNetworks[0]!.explorerUrl} copyable href={allNetworks[0]!.explorerUrl} />
             <DataRow
               label="Testnet explorer"

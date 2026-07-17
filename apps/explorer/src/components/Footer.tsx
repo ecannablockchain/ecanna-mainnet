@@ -28,10 +28,6 @@ export function ExplorerFooter() {
             <p className="text-sm leading-relaxed text-slate-400">
               ECNASCAN is a block explorer and analytics platform for {CHAIN_DISPLAY_NAME}.
             </p>
-            <p className="text-xs leading-relaxed text-amber-200/90">
-              Contract deploy: Remix / solc <strong className="text-amber-100">EVM = london</strong> (not default or
-              shanghai). See Verify &amp; Publish.
-            </p>
             <button
               type="button"
               onClick={() => void onAddNetwork()}

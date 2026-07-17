@@ -3,6 +3,7 @@ import { AddToWallet } from "../components/AddToWallet";
 import { CopyButton } from "../components/CopyButton";
 import { DataRow, InfoPanel } from "../components/InfoPanel";
 import { PanelIcon } from "../components/BlockchainIcons";
+import { DeployEvmNotice } from "../components/DeployEvmNotice";
 import { chainIdDecimal, publicRpcUrl } from "../lib/publicNetwork";
 import { site } from "../config";
 
@@ -79,7 +80,10 @@ export function WalletConfiguration() {
               <DataRow label="Chain ID (hex)" value={`0x${Number(chainId).toString(16)}`} copyable />
               <DataRow label="Currency symbol" value={site.nativeSymbol} copyable required />
               <DataRow label="Block explorer" value={site.explorerUrl} copyable href={site.explorerUrl} required />
+              <DataRow label="Contract EVM" value="london (Remix Advanced settings)" mono={false} />
             </InfoPanel>
+
+            <DeployEvmNotice className="mt-4" />
 
             <div className="mt-4 rounded-lg border border-[var(--card-border)] bg-[var(--page-bg)] px-4 py-3 text-xs leading-relaxed text-[var(--card-muted)]">
               <strong className="text-[var(--card-heading)]">MetaMask:</strong> Settings → Networks → Add network → Add

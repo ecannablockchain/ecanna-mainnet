@@ -15,7 +15,7 @@ const pillars: { icon: Parameters<typeof FeatureCard>[0]["icon"]; title: string;
   {
     icon: "rpc",
     title: "Standard RPC",
-    body: "JSON-RPC compatible with Hardhat, Foundry, MetaMask, and existing deployment pipelines — no proprietary SDK required.",
+    body: "JSON-RPC for wallets and tools. When deploying contracts, set Solidity EVM to london (Remix Advanced — not default).",
   },
   {
     icon: "wallet",

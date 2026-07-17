@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { LondonEvmBanner } from "../components/LondonEvmBanner";
 import { apiUrl } from "../lib/api";
 import { isTestnetExplorer } from "../lib/networkPeer";
 import { NATIVE_SYMBOL } from "../lib/chainBranding";
@@ -64,17 +65,21 @@ export function FaucetPage() {
   const amount = status?.amountFormatted ?? "1000";
 
   return (
-    <div className="max-w-xl">
-      <h1 className="font-display text-2xl font-semibold text-[var(--card-heading)]">Testnet faucet</h1>
-      <p className="mt-2 text-sm text-[var(--card-muted)]">
-        Get free <strong>{sym}</strong> on ECNA Testnet (chain ID 4112). One request per wallet per 24 hours.
-      </p>
+    <div className="max-w-xl space-y-4">
+      <div>
+        <h1 className="font-display text-2xl font-semibold text-[var(--card-heading)]">Testnet faucet</h1>
+        <p className="mt-2 text-sm text-[var(--card-muted)]">
+          Get free <strong>{sym}</strong> on ECNA Testnet (chain ID 4112). One request per wallet per 24 hours.
+        </p>
+      </div>
+
+      <LondonEvmBanner />
 
       {status && !status.enabled ? (
-        <p className="mt-4 text-sm text-red-600">Faucet is not enabled on this API.</p>
+        <p className="text-sm text-red-600">Faucet is not enabled on this API.</p>
       ) : null}
 
-      <div className="mt-6 space-y-4 rounded-lg border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
+      <div className="space-y-4 rounded-lg border border-[var(--card-border)] bg-[var(--card-bg)] p-5">
         <p className="text-sm text-[var(--card-muted)]">
           Amount per request: <span className="font-mono font-semibold text-[var(--card-heading)]">{amount} {sym}</span>
         </p>
