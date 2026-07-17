@@ -95,7 +95,17 @@ app.use(
 app.use(attachCookies);
 app.use(express.json({ limit: "4mb" }));
 app.use(express.urlencoded({ extended: true, limit: "4mb" }));
-app.use(pinoHttp({ logger }));
+// Production: do not log every successful poll (fills PM2 disks). Errors/4xx still logged.
+app.use(
+  pinoHttp({
+    logger,
+    customLogLevel(_req, res, err) {
+      if (err || res.statusCode >= 500) return "error";
+      if (res.statusCode >= 400) return "warn";
+      return "silent";
+    },
+  }),
+);
 
 app.get("/", (_req, res) => {
   res.json({

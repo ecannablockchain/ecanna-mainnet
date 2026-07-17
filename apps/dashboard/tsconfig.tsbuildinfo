@@ -1,1 +1,0 @@
-{"root":["./src/app.tsx","./src/abi.ts","./src/chainbranding.ts","./src/erc20.ts","./src/main.tsx","./src/vite-env.d.ts","./src/wagmi.ts","./src/components/brandedloader.tsx","./src/components/ecnalogo.tsx"],"version":"5.9.3"}

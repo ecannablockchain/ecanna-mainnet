@@ -34,8 +34,8 @@ module.exports = {
     version: "0.8.24",
     settings: {
       optimizer: { enabled: true, runs: 200 },
-      // ECNA Clique activates Shanghai (PUSH0). Cancun is not used (miner crash on Clique).
-      evmVersion: "shanghai",
+      // Stock Geth Clique supports through London only (no shanghaiTime in genesis).
+      evmVersion: "london",
       viaIR: true,
     },
   },

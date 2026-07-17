@@ -63,7 +63,7 @@ export async function assertBytecodeMatches(
   if (compilerBc && creationInput) {
     if (!creationInput.startsWith(compilerBc)) {
       throw new Error(
-        "Creation bytecode does not match the indexed deployment transaction. Recompile with the same EVM (cancun/shanghai/paris) and optimizer settings as the deployment.",
+        "Creation bytecode does not match the indexed deployment transaction. Recompile with the same EVM (london/paris) and optimizer settings as the deployment.",
       );
     }
     return { exactBytecodeMatch: true };

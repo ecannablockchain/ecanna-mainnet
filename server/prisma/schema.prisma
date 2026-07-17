@@ -80,7 +80,7 @@ model ContractVerification {
   compilerVersion    String
   optimization       Boolean
   runs               Int      @default(200)
-  evmVersion         String   @default("shanghai")
+  evmVersion         String   @default("london")
   exactBytecodeMatch Boolean  @default(false)
   openSourceLicense  String   @default("MIT")
   sourceCode         String         @db.NVarChar(Max)

@@ -187,7 +187,7 @@ export function VerifyPage() {
   const [creationTxInput, setCreationTxInput] = useState("");
   const [compilerCreationBytecode, setCompilerCreationBytecode] = useState("");
   const [deployMetaHint, setDeployMetaHint] = useState<string | null>(null);
-  const [evmVersion, setEvmVersion] = useState("shanghai");
+  const [evmVersion, setEvmVersion] = useState("london");
   const [alreadyVerified, setAlreadyVerified] = useState(false);
   const [verifiedCheckDone, setVerifiedCheckDone] = useState(false);
   const [optimizationUsed, setOptimizationUsed] = useState(true);
@@ -367,10 +367,10 @@ export function VerifyPage() {
       return;
     }
     const evm = evmVersion.trim().toLowerCase();
-    if (evm === "cancun" || evm === "prague") {
+    if (evm === "shanghai" || evm === "cancun" || evm === "prague") {
       setOut({
         ok: false,
-        text: `EVM "${evm}" is not supported on ECNA Clique. In Remix set EVM version to shanghai.`,
+        text: `EVM "${evm}" is not supported on ECNA Clique (stock Geth). In Remix set EVM version to london.`,
       });
       return;
     }
@@ -438,9 +438,9 @@ export function VerifyPage() {
       </div>
 
       <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
-        <p className="font-semibold">ECNA supports modern Remix / Solidity (Shanghai EVM — PUSH0)</p>
+        <p className="font-semibold">ECNA Clique uses London EVM (stock Geth)</p>
         <p className="mt-1 text-xs leading-relaxed">
-          In Remix set <strong>EVM version → shanghai</strong> (not cancun/prague). Higher Solidity versions (0.8.20+) deploy on mainnet and testnet. Cancun-only opcodes are not supported on this Clique chain.
+          In Remix set <strong>EVM version → london</strong> (not shanghai/cancun/prague). Upstream Geth rejects Clique chains with Shanghai. Solidity 0.8.20+ must explicitly select london (default solc targets emit PUSH0 otherwise).
         </p>
       </div>
 
@@ -685,9 +685,8 @@ export function VerifyPage() {
               value={evmVersion}
               onChange={(e) => setEvmVersion(e.target.value)}
             >
-              <option value="shanghai">shanghai (recommended for modern Remix)</option>
+              <option value="london">london (recommended — Clique / stock Geth)</option>
               <option value="paris">paris</option>
-              <option value="london">london</option>
               <option value="berlin">berlin</option>
               <option value="istanbul">istanbul</option>
               <option value="petersburg">petersburg</option>

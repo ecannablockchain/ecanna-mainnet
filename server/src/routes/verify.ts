@@ -21,7 +21,7 @@ export async function verifyContractHandler(req: Request, res: Response) {
   const optimization = (body.optimizationUsed || body.optimization || "0") === "1";
   const runs = parseInt(body.runs || body.Runs || "200", 10);
   const compiledRuntime = (body.compiledRuntimeBytecode || body.runtimeBytecode || "").trim();
-  const evmVersion = (body.evmVersion || body.EvmVersion || "shanghai").trim() || "shanghai";
+  const evmVersion = (body.evmVersion || body.EvmVersion || "london").trim() || "london";
   const compilerKind =
     (body.compilerKind || body.compilerType || body.CompilerType || "solidity-single-file").trim() ||
     "solidity-single-file";
@@ -87,10 +87,10 @@ export async function verifyContractHandler(req: Request, res: Response) {
     });
   }
 
-  if (evmVersion === "cancun" || evmVersion === "prague") {
+  if (evmVersion === "shanghai" || evmVersion === "cancun" || evmVersion === "prague") {
     return res.status(400).json({
       status: "0",
-      message: `EVM version "${evmVersion}" is not supported on ECNA Clique. Use shanghai (PUSH0 / modern Solidity) or paris.`,
+      message: `EVM version "${evmVersion}" is not supported on ECNA Clique (stock Geth). Use london (or paris/berlin).`,
     });
   }
 
