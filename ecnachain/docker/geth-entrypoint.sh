@@ -18,6 +18,19 @@ FULLNODE_HTTP_API="${FULLNODE_HTTP_API:-eth,net,web3,txpool}"
 HTTP_CORS_DOMAIN="${HTTP_CORS_DOMAIN:-*}"
 HTTP_VHOSTS="${HTTP_VHOSTS:-localhost,127.0.0.1}"
 WS_ORIGINS="${WS_ORIGINS:-*}"
+# Public IP for P2P advertisement (Docker --nat any often picks a wrong discport)
+EXTERNAL_IP="${EXTERNAL_IP:-168.144.69.102}"
+NAT_FLAG="--nat extip:${EXTERNAL_IP}"
+
+# Pin P2P identity across chain wipes (enode stays stable for exchanges)
+install_nodekey() {
+  if [ -f /secrets/nodekey ]; then
+    mkdir -p "$DATA_DIR/geth"
+    cp /secrets/nodekey "$DATA_DIR/geth/nodekey"
+    chmod 600 "$DATA_DIR/geth/nodekey"
+    echo "[geth] installed pinned nodekey from /secrets/nodekey"
+  fi
+}
 
 genesis_sha256() {
   if command -v sha256sum >/dev/null 2>&1; then
@@ -40,11 +53,15 @@ if [ ! -d "$DATA_DIR/geth/chaindata" ]; then
   echo "[geth] initializing datadir from genesis..."
   geth init --datadir "$DATA_DIR" "$GENESIS"
   genesis_sha256 > "$GENESIS_STAMP"
+  install_nodekey
 elif [ ! -f "$GENESIS_STAMP" ]; then
   echo "[geth] no genesis stamp — re-init from $GENESIS (keystore kept)"
   rm -rf "$DATA_DIR/geth"
   geth init --datadir "$DATA_DIR" "$GENESIS"
   genesis_sha256 > "$GENESIS_STAMP"
+  install_nodekey
+else
+  install_nodekey
 fi
 
 if [ "$MINING_ENABLED" = "1" ] && [ -f /secrets/miner-private.hex ]; then
@@ -82,7 +99,7 @@ if [ "$MINING_ENABLED" = "1" ]; then
     --ws.origins "$WS_ORIGINS" \
     --port "$P2P_PORT" \
     --discovery.port "$P2P_PORT" \
-    --nat any \
+    $NAT_FLAG \
     ${BOOTNODES:+--bootnodes "$BOOTNODES"} \
     --mine \
     --miner.gasprice "${MINER_GASPRICE_WEI}" \
@@ -109,7 +126,7 @@ else
     --ws.origins "$WS_ORIGINS" \
     --port "$P2P_PORT" \
     --discovery.port "$P2P_PORT" \
-    --nat any \
+    $NAT_FLAG \
     ${BOOTNODES:+--bootnodes "$BOOTNODES"} \
     "$@"
 fi

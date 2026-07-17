@@ -23,12 +23,13 @@ Use these links when an exchange asks for source, genesis, peers, and Geth build
 ## Peer / bootnode (copy-paste)
 
 ```
-enode://e11f51bdb2bafcd774fe1a9a79860995892535792386319928c9a83a6f775c61cc57ca0a2682adab3e55201a5d787b1158958e7d0451c1d7c37aea50443e9d4b@168.144.69.102:30303
+enode://6728dde6587af2b1ed676261d486319254cd3ad1a7721d779210e108ccced65e9b020ffc59a1f5b4ca0ce2120dcbba66488cc46b7679a7702d0e3a223e70b62e@168.144.69.102:30303
 ```
 
 - **P2P port:** `30303` TCP + UDP  
 - **Host:** `168.144.69.102`  
 - Place `static-nodes.json` under the node’s datadir `geth/` folder (Geth standard), or pass via bootnodes.
+- After any chain wipe the **enode ID can change** unless the operator pins `nodekey` — always use the enode from the GitHub `static-nodes.json` above.
 
 ## Node OS & client requirements
 

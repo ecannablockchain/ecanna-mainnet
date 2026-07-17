@@ -22,6 +22,8 @@ services:
       - ./docker/password-dev.txt:/secrets/password.txt:ro
       # Key for ECNA_PRIMARY_ADDRESS (validator); gas/etherbase = ECNA_PRIMARY, premine = ECNA_NATIVE_MINT in genesis
       - ./docker/miner-private.hex:/secrets/miner-private.hex:ro
+      # Stable P2P identity (enode) — keep across wipes; do not commit real file to public git
+      - ./docker/nodekey:/secrets/nodekey:ro
     environment:
       GENESIS_PATH: /genesis.json
       GETH_DATADIR: /data
@@ -29,6 +31,7 @@ services:
       HTTP_PORT: "8545"
       WS_PORT: "8546"
       P2P_PORT: "30303"
+      EXTERNAL_IP: "168.144.69.102"
       # Clique requires etherbase = unlocked signer account (keystore). Drain prevented by localhost RPC + rpc-public-guard.
       MINER_ETHERBASE: ${ECNA_PRIMARY_ADDRESS}
       UNLOCK_ACCOUNT: ${ECNA_PRIMARY_ADDRESS}
