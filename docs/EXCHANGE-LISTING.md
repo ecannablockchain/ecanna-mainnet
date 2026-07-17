@@ -19,6 +19,9 @@ Use these links when an exchange asks for source, genesis, peers, and Geth build
 | **Explorer** | https://explorer.ecnascan.com |
 | **Website** | https://ecnascan.com |
 | **Chainlist** | https://chainlist.org/?search=4111 |
+| **Genesis hash (block 0)** | `0xeac82b18632cf693d4b57d319cefece0349ebcf20bc76bdf5c04216126cb3e1b` |
+
+> **Obsolete enode (do not use):** any peer ID starting with `e11f51…` — rotated after July 2026 wipe. Always use the enode in this file / GitHub `static-nodes.json`.
 
 ## Peer / bootnode (copy-paste)
 

@@ -2,9 +2,9 @@
 
 **Last updated:** 17 July 2026  
 **Server:** `168.144.69.102` (`ecnascan.com`)  
-**Status:** Fresh genesis (**London** EVM / Clique — no `shanghaiTime`) + RPC harden. See also root [`AGENTS.md`](../AGENTS.md).
+**Status:** London EVM / Clique (no `shanghaiTime`) + RPC harden + **pinned P2P nodekeys**. See root [`AGENTS.md`](../AGENTS.md).
 
-> **Do not put private keys in git.** Miner / faucet keys live only in server hex files and `server/.env` (gitignored).
+> **Do not put private keys or `nodekey` in public git.** Miner / faucet / nodekey live only in server + local gitignored files.
 
 ---
 
@@ -19,6 +19,30 @@
 | Genesis supply | **1 Crore** = 10,000,000 ECNA | Treasury **100M** tECNA + faucet **100M** tECNA |
 | Premine wei (treasury) | `10000000000000000000000000` | `100000000000000000000000000` |
 | EVM for deploy/verify | **london** (stock Geth Clique) | **london** |
+| Genesis hash (block 0) | `0xeac82b18632cf693d4b57d319cefece0349ebcf20bc76bdf5c04216126cb3e1b` | `0x75a3446929625d15d01857be62f5ab10abde0ad01311a37664d4ccc27fbde3a6` |
+| Geth | **v1.13.15-stable** | **v1.13.15-stable** |
+
+---
+
+## P2P peers (exchanges / full nodes)
+
+Always take the live enode from GitHub `static-nodes.json` (or `admin.nodeInfo.enode` on the validator). Do **not** reuse obsolete IDs from old chats.
+
+| Network | Port | Current enode |
+|---------|------|----------------|
+| Mainnet | **30303** TCP+UDP | `enode://6728dde6587af2b1ed676261d486319254cd3ad1a7721d779210e108ccced65e9b020ffc59a1f5b4ca0ce2120dcbba66488cc46b7679a7702d0e3a223e70b62e@168.144.69.102:30303` |
+| Testnet | **30313** TCP+UDP | `enode://f762fd2f93af7d072aa497fab66e5e54800b9de96becd13b79378d2b89b6e567c6d703cf16a977e4463205b373c1b86b241c860a1d609405139f340938b96112@168.144.69.102:30313` |
+
+**Pinned nodekey (ops):**
+
+| Network | Laptop (gitignored) | Server |
+|---------|---------------------|--------|
+| Mainnet | `ecnachain/docker/nodekey` | `/opt/ecnascan/ecnachain/docker/nodekey` |
+| Testnet | `testnet/ecnachain/docker/nodekey` | `/opt/ecnascan-testnet/ecnachain/docker/nodekey` |
+
+Entrypoint copies `/secrets/nodekey` → datadir and starts with `--nat extip:168.144.69.102`. After any wipe: confirm enode still matches `static-nodes.json`; if not, update JSON + GitHub + this doc + `AGENTS.md`.
+
+**Obsolete enodes (do not share):** mainnet `e11f51…`, testnet `9ad0e0…`.
 
 ---
 
@@ -72,9 +96,11 @@ Adding them requires new genesis + chain wipe (must have their private keys / pe
 | Network | File | What |
 |---------|------|------|
 | Mainnet | `/opt/ecnascan/ecnachain/docker/miner-private.hex` | Miner key (64 hex, no `0x`) |
+| Mainnet | `/opt/ecnascan/ecnachain/docker/nodekey` | Pinned P2P identity (enode) |
 | Mainnet | `/opt/ecnascan/ecnachain/.env` | `ECNA_PRIMARY_ADDRESS`, `ECNA_VALIDATORS`, `ECNA_NATIVE_MINT_ADDRESS` |
 | Mainnet | `/opt/ecnascan/server/.env` | API/indexer env (DB, RPC, validators, treasury) |
 | Testnet | `/opt/ecnascan-testnet/ecnachain/docker/miner-private.hex` | Miner key |
+| Testnet | `/opt/ecnascan-testnet/ecnachain/docker/nodekey` | Pinned P2P identity (enode) |
 | Testnet | `/opt/ecnascan-testnet/ecnachain/docker/faucet-private.hex` | Faucet key |
 | Testnet | `/opt/ecnascan-testnet/server/.env` | Includes `FAUCET_PRIVATE_KEY` |
 
@@ -102,7 +128,9 @@ Older single-network helper: `scripts/client-go-live-reset.sh` (mainnet only).
 | API | https://api.ecnascan.com | https://testnetapi.ecnascan.com |
 | RPC | https://rpc.ecnascan.com | https://testnetrpc.ecnascan.com |
 | Website | https://ecnascan.com | (same site shows both) |
+| Dashboard | https://dashboard.ecnascan.com | (mainnet wallet UI only — no testnet dashboard host) |
 | Faucet | — | https://testnetexplorer.ecnascan.com/faucet |
+| Exchange listing pack | [`docs/EXCHANGE-LISTING.md`](./EXCHANGE-LISTING.md) | [`docs/EXCHANGE-LISTING-TESTNET.md`](./EXCHANGE-LISTING-TESTNET.md) |
 
 Config check: `GET /api/v1/config` on each API.
 

@@ -2,7 +2,7 @@
 
 **Audience:** Developers / DevOps joining the ECNASCAN project  
 **Scope:** Mainnet + Testnet (production on DigitalOcean)  
-**Last updated:** 15 July 2026 (client go-live — fresh genesis both networks)  
+**Last updated:** 17 July 2026 (London genesis wipe + pinned P2P nodekeys + exchange listing fixes)  
 **Domain:** `ecnascan.com`  
 **Production server IP:** `168.144.69.102`
 
@@ -15,13 +15,18 @@
 | **Total Supply (mainnet genesis)** | **1 Crore** (10,000,000 ECNA) |
 | Decimals | 18 |
 | Genesis wei (mainnet treasury) | `10000000000000000000000000` (`10_000_000 * 10^18`) |
+| **EVM** | **london** (no `shanghaiTime`) |
+| **Geth** | **v1.13.15-stable** |
+| Mainnet genesis hash | `0xeac82b18632cf693d4b57d319cefece0349ebcf20bc76bdf5c04216126cb3e1b` |
 
 Testnet native symbol: **tECNA** (E Canna Testnet).
 
 **Canonical address table (ops / agents / new developers):** [`docs/ADDRESSES-LIVE.md`](./ADDRESSES-LIVE.md).  
-**Short briefing for humans + AI:** [`AGENTS.md`](../AGENTS.md).
+**Short briefing for humans + AI:** [`AGENTS.md`](../AGENTS.md).  
+**GitHub + Chainlist + exchange:** [`docs/GITHUB-AND-CHAINLIST.md`](./GITHUB-AND-CHAINLIST.md).  
+**Exchange listing packs:** [`docs/EXCHANGE-LISTING.md`](./EXCHANGE-LISTING.md) · [`docs/EXCHANGE-LISTING-TESTNET.md`](./EXCHANGE-LISTING-TESTNET.md).
 
-> Live chains were **wiped and re-genesis’d** on 15 July 2026 (client go-live + RPC harden). Miner `0x9F926a69ba55c2F436A51108f8eb96E21fC5a329`. Changing validators/treasury again requires another genesis reset. Public RPC must stay behind `rpc-public-guard` (never raw unlocked Geth).
+> **Timeline:** Client go-live wipe 15 July 2026 (RPC harden). **17 July 2026:** removed `shanghaiTime` (stock Geth Clique cannot sync Shanghai) and re-genesis’d both nets; pinned `docker/nodekey` so enode IDs stay stable; updated GitHub `static-nodes.json`. Miner `0x9F926a69ba55c2F436A51108f8eb96E21fC5a329`. Public RPC must stay behind `rpc-public-guard`.
 
 ---
 
@@ -36,6 +41,7 @@ Testnet native symbol: **tECNA** (E Canna Testnet).
 6. [Environment variables](#6-environment-variables)
 7. [Deploy & publish code](#7-deploy--publish-code)
 8. [Chain (Geth / Clique PoA)](#8-chain-geth--clique-poa)
+8b. [P2P peers, nodekey, exchange sync](#8b-p2p-peers-nodekey-exchange-sync)
 9. [Database (SQL Server)](#9-database-sql-server)
 10. [API & indexer (PM2)](#10-api--indexer-pm2)
 11. [Frontends (explorer, website, dashboard)](#11-frontends-explorer-website-dashboard)
@@ -337,7 +343,7 @@ curl -s http://127.0.0.1:4001/health   # testnet
 
 - **Consensus:** Clique — only addresses in genesis `extraData` signers can produce blocks.
 - **Block time:** ~3 seconds.
-- **EVM:** **Shanghai** activated on mainnet & testnet (supports Remix/`solc` **PUSH0** and Solidity 0.8.20+). Set Remix EVM to **shanghai** (not cancun — Cancun breaks Clique mining on Geth 1.13).
+- **EVM:** **London** only on mainnet & testnet. Stock Geth rejects Clique + Shanghai (`clique does not support shanghai fork`) — genesis must **not** set `shanghaiTime`. Remix/Hardhat: **EVM = london** (not shanghai/cancun/prague).
 - **Genesis:** Built with `ecnachain/scripts/build-genesis.mjs`.
 
 ### Regenerate genesis (new chain only — wipes history)
@@ -373,6 +379,56 @@ docker compose -p ecna-testnet ps
 | RPC | https://rpc.ecnascan.com | https://testnetrpc.ecnascan.com |
 | Chain ID | 4111 | 4112 |
 | Symbol | ECNA | tECNA |
+| Currency / EVM | ECNA / **london** | tECNA / **london** |
+
+---
+
+## 8b. P2P peers, nodekey, exchange sync
+
+### Why exchanges failed (July 2026 lessons)
+
+| Symptom | Cause | Fix |
+|---------|--------|-----|
+| `clique does not support shanghai fork` | Genesis had `shanghaiTime` | London-only genesis (no Shanghai); wipe + re-init |
+| `admin.addPeer` → `true` but `admin.peers` = `[]` | Wrong/obsolete enode after wipe | Use current `static-nodes.json` from GitHub |
+| `eth.syncing` shows `currentBlock: 0`, `highestBlock > 0` | Sync starting | Wait; not an error |
+| `etherbase must be explicitly specified` | Sync-only node (no miner) | Ignore |
+
+### Current peers (also in `static-nodes.json` + GitHub)
+
+**Mainnet (30303):**
+```
+enode://6728dde6587af2b1ed676261d486319254cd3ad1a7721d779210e108ccced65e9b020ffc59a1f5b4ca0ce2120dcbba66488cc46b7679a7702d0e3a223e70b62e@168.144.69.102:30303
+```
+
+**Testnet (30313):**
+```
+enode://f762fd2f93af7d072aa497fab66e5e54800b9de96becd13b79378d2b89b6e567c6d703cf16a977e4463205b373c1b86b241c860a1d609405139f340938b96112@168.144.69.102:30313
+```
+
+**Obsolete (never share):** mainnet `e11f51…`, testnet `9ad0e0…`.
+
+### Pinning enode across wipes
+
+| Item | Path |
+|------|------|
+| Mainnet nodekey (gitignored) | `ecnachain/docker/nodekey` → `/opt/ecnascan/ecnachain/docker/nodekey` |
+| Testnet nodekey (gitignored) | `testnet/ecnachain/docker/nodekey` → `/opt/ecnascan-testnet/ecnachain/docker/nodekey` |
+| Entrypoint | Copies `/secrets/nodekey` into datadir; starts with `--nat extip:168.144.69.102` |
+| Public file | `ecnachain/static-nodes.json` (committed / GitHub) |
+
+After `deploy-fresh-golive.ps1`: confirm `docker exec … geth attach --exec admin.nodeInfo.enode` matches `static-nodes.json`. If not, update laptop + GitHub + `AGENTS.md` + this KT.
+
+### Exchange checklist (tell partners)
+
+1. Ubuntu 22.04/24.04, Geth **v1.13.15**, `--syncmode full`
+2. Wipe old datadir; `geth init` with **current** GitHub genesis
+3. Copy **current** `static-nodes.json` (or `admin.addPeer` with enode above)
+4. Outbound TCP+UDP to `168.144.69.102:30303` (mainnet) or `:30313` (testnet)
+5. Expect `admin.peers` length ≥ 1, then rising `eth.blockNumber`
+6. Optional: use public RPC `https://rpc.ecnascan.com` without running a node
+
+Full packs: [`docs/EXCHANGE-LISTING.md`](./EXCHANGE-LISTING.md), [`docs/EXCHANGE-LISTING-TESTNET.md`](./EXCHANGE-LISTING-TESTNET.md).
 
 ---
 
@@ -471,17 +527,17 @@ Dual-network links: website and explorer read peer URLs from `VITE_*` env vars (
 
 ### ECNA EVM (Remix / Hardhat)
 
-ECNA activates **Shanghai** on mainnet and testnet (live upgrade — no chain wipe). Higher Solidity versions that need `PUSH0` **deploy correctly** when EVM is **shanghai**.
+ECNA uses **London** on mainnet and testnet. Upstream Geth Clique **cannot** enable Shanghai — exchange sync nodes fail with `clique does not support shanghai fork` if `shanghaiTime` is in genesis.
 
 | Setting | Allowed | Notes |
 |---------|---------|-------|
-| Solidity version | 0.8.x (including 0.8.20+) | Match when verifying |
-| EVM target | **shanghai**, paris, london | Remix: set **shanghai** |
-| Cancun / Prague | Not supported | Clique + Cancun crashes Geth miner |
+| Solidity version | 0.8.x | For 0.8.20+, explicitly set EVM **london** |
+| EVM target | **london**, paris, berlin | Remix: set **london** |
+| Shanghai / Cancun / Prague | Not supported | Stock Geth Clique rejects Shanghai+; Cancun breaks mining |
 
 ### Remix checklist
 
-1. Compile → Advanced → **EVM Version = shanghai**
+1. Compile → Advanced → **EVM Version = london**
 2. Deploy & run → Environment: **Injected Provider** (MetaMask)
 3. MetaMask on correct network (4111 or 4112)
 4. Deploy contract
@@ -492,7 +548,7 @@ ECNA activates **Shanghai** on mainnet and testnet (live upgrade — no chain wi
 `contracts/hardhat.config.cjs` sets:
 
 ```js
-evmVersion: "shanghai"
+evmVersion: "london"
 ```
 
 Deploy to mainnet:
@@ -512,8 +568,8 @@ npm run deploy   # or network-specific script in package.json
 
 1. **Bytecode must match** on-chain code (creation bytecode + tx input, or deployed bytecode).
 2. **Once verified — locked.** No update, no re-verify.
-3. **Cancun/Prague EVM rejected** at API level (use shanghai).
-4. Default EVM on verify form: **shanghai**.
+3. **Shanghai/Cancun/Prague EVM rejected** at API level (use **london**).
+4. Default EVM on verify form: **london**.
 5. Bytecode must match on-chain (strict). Once verified — locked.
 
 ### What to paste
@@ -523,7 +579,7 @@ npm run deploy   # or network-specific script in package.json
 | Source code | Remix or `.sol` file |
 | ABI | Compiler output / artifact JSON |
 | Compiler version | Must match compile (e.g. `v0.8.24+commit...`) |
-| EVM version | `shanghai` (or paris — must match compile) |
+| EVM version | `london` (or paris — must match compile) |
 | Compiler bytecode | Artifact `bytecode` / `bytecode.object` |
 | Creation tx input | Full hex from deployment transaction |
 | Deployed bytecode | Artifact `deployedBytecode` (optional if creation match provided) |
@@ -542,7 +598,7 @@ Content-Type: application/json
   "sourceCode": "...",
   "abi": "[...]",
   "compilerVersion": "v0.8.24+commit.e11b9ed9",
-  "evmVersion": "shanghai",
+  "evmVersion": "london",
   "compilerCreationBytecode": "0x...",
   "creationTxInput": "0x...",
   "optimizationUsed": "1",
@@ -654,7 +710,7 @@ See also:
 | Restart testnet API | `pm2 restart ecna-api-testnet ecna-indexer-testnet` |
 | DB schema update | `npx prisma db push` in `server/` |
 | Rebuild mainnet explorer | `npm run build -w apps/explorer` + copy to `/var/www/explorer` |
-| Verify contract | Explorer → Verify & Publish (EVM shanghai + bytecode proof) |
+| Verify contract | Explorer → Verify & Publish (EVM london + bytecode proof) |
 | Add token logo | Token page → Info → connect deployer wallet |
 | Request testnet coins | Testnet explorer faucet or POST `/api/v1/faucet` |
 | Add validator | `ECNA_VALIDATORS=0x...,0x...` + rebuild genesis (new chain) |
@@ -665,8 +721,11 @@ See also:
 
 | Problem | Likely cause | Fix |
 |---------|--------------|-----|
-| Remix deploy fails / invalid opcode | EVM set to cancun/prague | Set Remix EVM to **shanghai** |
-| Higher solc deploy fails | Wrong EVM version | Advanced → EVM Version → **shanghai** |
+| Remix deploy fails / invalid opcode | EVM set to shanghai/cancun/prague | Set Remix EVM to **london** |
+| Higher solc deploy fails | Wrong EVM version (PUSH0) | Advanced → EVM Version → **london** |
+| Exchange: `clique does not support shanghai fork` | Old genesis with `shanghaiTime` | Re-download London genesis; wipe their `data/` |
+| Exchange: `addPeer` true, `peers` empty | Obsolete enode after our wipe | Give current enode from `static-nodes.json` / AGENTS.md |
+| Exchange: sync stays at 0 forever | Firewall or wrong networkid | Open outbound 30303/30313; `--networkid 4111` / `4112`; `--syncmode full` |
 | Verify rejected “bytecode mismatch” | Wrong optimizer / compiler / EVM | Recompile with exact same settings; paste correct bytecode |
 | Verify “already verified” | Address was verified before | Cannot re-verify (by design) |
 | API “database down” | Wrong `DATABASE_URL` in server `.env` | Use `127.0.0.1:1433` on server; check `docker ps` for `ecna-mssql` |
@@ -674,7 +733,8 @@ See also:
 | Indexer behind chain head | Normal catch-up or stuck | `pm2 logs ecna-indexer`; check RPC; increase `INDEXER_BATCH_SIZE` |
 | Token profile “not deployer” | Wrong wallet connected | Use wallet that sent deploy tx |
 | Testnet works, mainnet broken | Separate `.env` files | Fix `/opt/ecnascan/server/.env` only — don’t mix with testnet |
-| Higher solc works locally but not after deploy | Confirm Shanghai on both nodes | Geth logs should list Shanghai under Post-Merge forks |
+| Higher solc works locally but not after deploy | Compiled with shanghai/PUSH0 | Recompile with EVM **london**; Geth logs must not list Shanghai |
+| Enode changed after wipe | `nodekey` not pinned / not restored | Keep `docker/nodekey`; update `static-nodes.json` + GitHub |
 
 ---
 
@@ -704,6 +764,8 @@ Rotate SSH and DB passwords if shared externally. Prefer SSH keys for production
 |----------|--------|
 | `AGENTS.md` | Short briefing for humans + AI agents |
 | `docs/ADDRESSES-LIVE.md` | **Live** miner / treasury / faucet addresses after go-live |
+| `docs/GITHUB-AND-CHAINLIST.md` | Private GitHub repos + Chainlist / ethereum-lists PR status |
+| `docs/chainlist/` | Chainlist submission JSON/JS + howto |
 | `docs/TESTNET.md` | Testnet URLs, deploy, faucet |
 | `docs/SIMPLE-GUIDE.md` | Short ECNA + PETH overview |
 | `docs/LIVE-FROM-ZERO.md` | Production setup from scratch |
@@ -733,12 +795,17 @@ RPC         rpc.ecnascan.com     testnetrpc.ecnascan.com
 Server path /opt/ecnascan        /opt/ecnascan-testnet
 DB          Db_ECNAChain         Db_ECNATestnet
 PM2         ecna-api             ecna-api-testnet
-EVM deploy  shanghai (PUSH0)     shanghai (PUSH0)
+EVM deploy  london               london
+P2P         :30303 (enode 6728…) :30313 (enode f762…)
+Genesis     no shanghaiTime      no shanghaiTime
+Geth        v1.13.15             v1.13.15
 Code pub    .\scripts\deploy-hotfix.ps1
 Chain wipe  .\scripts\deploy-fresh-golive.ps1
 Addresses   docs/ADDRESSES-LIVE.md
+Exchange    docs/EXCHANGE-LISTING.md (+ TESTNET)
+Agents      AGENTS.md
 ```
 
 ---
 
-*For questions about this KT doc, update `docs/KT-ECNA-MAINNET-TESTNET.md` when architecture or URLs change.*
+*For questions about this KT doc, update `docs/KT-ECNA-MAINNET-TESTNET.md` when architecture, enodes, or URLs change.*
