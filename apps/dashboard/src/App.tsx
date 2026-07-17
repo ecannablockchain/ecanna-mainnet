@@ -24,15 +24,22 @@ import {
 import {
   useAccount,
   useBalance,
+  useChainId,
   usePublicClient,
   useReadContract,
+  useSwitchChain,
   useWaitForTransactionReceipt,
   useWriteContract,
 } from 'wagmi';
 import { erc20Abi } from './erc20';
 import { parseAbiFlexible } from './abi';
 import { BrandedLoader } from './components/BrandedLoader';
-import { token20Label } from './chainBranding';
+import { NATIVE_NAME, NATIVE_SYMBOL, token20Label } from './chainBranding';
+
+/** Live mainnet genesis treasury — fallback if env/API missing. */
+const MAINNET_TREASURY =
+  '0x34c7288B86E10A7096523FB1d6eC12948af95897' as const;
+const EXPECTED_CHAIN_ID = Number(import.meta.env.VITE_CHAIN_ID || 4111);
 
 const apiBase = (import.meta.env.VITE_API_URL || '').trim().replace(/\/$/, '');
 /** Dev: empty = relative URLs, Vite proxies /api and /health. Prod: set VITE_API_URL. */
@@ -104,8 +111,14 @@ export default function App() {
   };
 
   const { address, isConnected } = useAccount();
+  const chainId = useChainId();
+  const { switchChain, isPending: switchingChain } = useSwitchChain();
   const publicClient = usePublicClient();
-  const native = useBalance({ address });
+  const wrongNetwork = isConnected && chainId !== EXPECTED_CHAIN_ID;
+  const native = useBalance({
+    address,
+    query: { enabled: !!address && !wrongNetwork },
+  });
   const [remoteCfg, setRemoteCfg] = useState<ApiConfig | null>(null);
   const [apiFailed, setApiFailed] = useState(false);
   const [cfgLoading, setCfgLoading] = useState(true);
@@ -145,10 +158,15 @@ export default function App() {
   }, [remoteCfg]);
 
   const treasuryAddr = useMemo(() => {
-    const env = (import.meta.env.VITE_TREASURY_ADDRESS || '').trim();
-    if (env && isAddress(env)) return env as `0x${string}`;
-    const r = remoteCfg?.treasuryAddress?.trim();
-    if (r && isAddress(r)) return r as `0x${string}`;
+    // Prefer live API (source of truth), then env, then mainnet genesis fallback.
+    const candidates = [
+      remoteCfg?.treasuryAddress?.trim(),
+      (import.meta.env.VITE_TREASURY_ADDRESS || '').trim(),
+      EXPECTED_CHAIN_ID === 4111 ? MAINNET_TREASURY : '',
+    ];
+    for (const c of candidates) {
+      if (c && isAddress(c)) return c as `0x${string}`;
+    }
     return undefined;
   }, [remoteCfg]);
 
@@ -185,7 +203,7 @@ export default function App() {
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
-    query: { enabled: tokenEnabled && !!address },
+    query: { enabled: tokenEnabled && !!address && !wrongNetwork },
   });
 
   const treasuryTokenBal = useReadContract({
@@ -196,7 +214,10 @@ export default function App() {
     query: { enabled: tokenEnabled && !!treasuryAddr },
   });
 
-  const treasuryNative = useBalance({ address: treasuryAddr });
+  const treasuryNative = useBalance({
+    address: treasuryAddr,
+    query: { enabled: !!treasuryAddr },
+  });
 
   const { writeContract, data: hash, isPending, error } = useWriteContract();
   const receipt = useWaitForTransactionReceipt({ hash });
@@ -339,10 +360,10 @@ export default function App() {
   };
 
   const [open, setOpen] = useState(false);
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState('light');
 
   useEffect(() => {
-    const saved = localStorage.getItem('theme') || 'dark';
+    const saved = localStorage.getItem('theme') || 'light';
     setTheme(saved);
     document.documentElement.setAttribute('data-theme', saved);
     document.documentElement.setAttribute(
@@ -462,17 +483,35 @@ export default function App() {
       <div className='col-md-12 mb-4 '>
             <div className="alert alert-warning shadow-sm border-warning rounded-3 mb-0 animate-fade-in">
             <FontAwesomeIcon icon={faShieldAlt} className="me-2" />
-            <p className="muted">
-              <strong>API offline — balances will not load.</strong> From repo
-              root run <code className="mono">npm run local:stack</code> (or
-              only <code className="mono">npm run dev -w server</code>). Check{' '}
-              <a href={apiUrl('/health')}>{apiBase || '/health (proxied)'}</a> —
-              optional <code className="mono">VITE_API_URL</code> in{' '}
-              <code className="mono">apps/dashboard/.env</code>.
+            <p className="muted mb-0">
+              <strong>Indexer API offline</strong> — tx history may be empty.
+              Wallet and treasury balances still load from RPC (
+              <code className="mono">{import.meta.env.VITE_RPC_URL || 'https://rpc.ecnascan.com'}</code>
+              ).
             </p>
           </div>
       </div>
         </>
+      ) : null}
+
+      {wrongNetwork ? (
+        <div className="col-md-12 mb-4">
+          <div className="alert alert-danger shadow-sm rounded-3 mb-0 d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div>
+              <strong>Wrong network.</strong> Switch to{' '}
+              <strong>E Canna Mainnet</strong> (chain ID {EXPECTED_CHAIN_ID}) to
+              see correct balances.
+            </div>
+            <button
+              type="button"
+              className="btn btn-danger fw-bold"
+              disabled={switchingChain || !switchChain}
+              onClick={() => switchChain?.({ chainId: EXPECTED_CHAIN_ID })}
+            >
+              {switchingChain ? 'Switching…' : `Switch to ${EXPECTED_CHAIN_ID}`}
+            </button>
+          </div>
+        </div>
       ) : null}
 
 
@@ -483,62 +522,54 @@ export default function App() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            style={{ gridColumn: '1 / -1' }} // पुरानी ग्रिड सेटिंग बरकरार रखी
           >
-            <div className="card custom-ux-card border-0  rounded-3 overflow-hidden shadow-lg glass-card p-4 p-md-5">
-              <div className="glow-circle top-right"></div>
-              <div className="glow-circle bottom-left"></div>
-
+            <div className="card custom-ux-card border-0 rounded-3 overflow-hidden shadow-sm site-card p-4 p-md-5">
               <div className="position-relative">
-                {/* Header Section */}
                 <div className="row align-items-center mb-4">
                   <div className="col-md-8">
                     <div className="d-flex align-items-center gap-2 mb-2">
                       <span className="badge-live">LIVE</span>
-                      <h6 className="text-uppercase tracking-wider text-primary fw-bold m-0 small">
-                        Genesis Network
+                      <h6 className="text-uppercase tracking-wider text-brand fw-bold m-0 small">
+                        E Canna Mainnet
                       </h6>
                     </div>
                     <h2 className="display-6 fw-black ux-gradient-text mb-0">
-                      Treasury wallet (genesis ECNA)
+                      Treasury wallet (genesis {NATIVE_SYMBOL})
                     </h2>
                   </div>
                   <div className="col-md-4 text-md-end mt-3 mt-md-0">
-                    <div className="shield-box d-inline-flex align-items-center gap-2 p-2 px-3 rounded-pill bg-success  text-white  border border-success">
+                    <div className="shield-box d-inline-flex align-items-center gap-2 p-2 px-3 rounded-pill bg-success text-white border border-success">
                       <FontAwesomeIcon icon={faShieldAlt} />
                       <span className="small fw-bold">Verified Genesis</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Description Section */}
                 <p className="ux-description mb-4 opacity-75">
-                  On the{' '}
-                  <span className="highlight text-primary fw-bold">
-                    ECNA L1 Ledger
-                  </span>{' '}
-                  (<code className="mono">ecnachain/</code>),
-                  <strong> 1 Crore (10,000,000) ECNA</strong> is pre-minted in genesis
-                  to this treasury address. Import that key in MetaMask (chain
-                  ID <strong>{Number(import.meta.env.VITE_CHAIN_ID || 4111)}</strong>).
+                  On <strong>{NATIVE_NAME}</strong> (
+                  <span className="highlight text-brand fw-bold">
+                    E Canna Mainnet
+                  </span>
+                  ), <strong>1 Crore (10,000,000) {NATIVE_SYMBOL}</strong> is
+                  pre-minted in genesis to this treasury address. Chain ID{' '}
+                  <strong>{EXPECTED_CHAIN_ID}</strong>.
                 </p>
 
-                {/* Address Bar */}
-                <div className="modern-address-bar mb-2 p-3 rounded-3 bg-black bg-opacity-25 border border-white border-opacity-10">
+                <div className="modern-address-bar mb-2 p-3 rounded-3">
                   <div className="label small fw-bold opacity-50 mb-2">
                     TREASURY ADDRESS
                   </div>
                   <div className="d-flex justify-content-between align-items-center gap-3">
-                    <div className="address-text font-monospace text-truncate text-primary">
+                    <div className="address-text font-monospace text-truncate text-brand">
                       {treasuryAddr
                         ? treasuryAddr
-                        : 'Set TREASURY_ADDRESS or deploy with contracts/.env'}
+                        : 'Treasury address unavailable — check API / VITE_TREASURY_ADDRESS'}
                     </div>
                     <div className="d-flex gap-2">
                       {treasuryAddr && (
                         <button
                           type="button"
-                          className={`ux-copy-btn btn ${copied ? 'btn-success' : 'btn-primary'} rounded-3 px-3 fw-bold`}
+                          className={`ux-copy-btn btn ${copied ? 'btn-success' : 'btn-brand'} rounded-3 px-3 fw-bold`}
                           onClick={() => void handleCopy(treasuryAddr)}
                         >
                           <FontAwesomeIcon
@@ -552,90 +583,96 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Explorer Link */}
                 <div className="mb-4 ps-2">
                   <a
                     href={`${explorerBase}/address/${treasuryAddr ?? ''}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="small text-decoration-none opacity-50 hover-opacity-100"
+                    className="small text-decoration-none text-brand"
                   >
                     Open in block explorer →
                   </a>
                 </div>
 
-                {/* Stats Grid */}
-                {tokenEnabled && decimals.data !== undefined ? (
-                  <div className="row g-4 mt-2">
-                    {[
-                      {
-                        label: 'Total Supply',
-                        val: totalSupply.data,
-                        icon: faCoins,
-                        color: 'blue',
-                        unit: symbol.data ?? 'TOKEN',
-                      },
-                      {
-                        label: 'Treasury Vault',
-                        val: treasuryTokenBal.data,
-                        icon: faShieldAlt,
-                        color: 'purple',
-                        unit: symbol.data ?? 'TOKEN',
-                      },
-                      {
-                        label: 'Native Balance',
-                        val: treasuryNative.data?.value,
-                        icon: faGasPump,
-                        color: 'green',
-                        isNative: true,
-                        unit: 'ECNA',
-                      },
-                    ].map((item, index) => (
-                      <div className="col-12 col-md-4" key={index}>
-                        <div
-                          className={`ux-stat-card p-3 rounded-3 border-stat-${item.color} glass-card`}
-                        >
+                <div className="row g-4 mt-2">
+                  <div className="col-12 col-md-4">
+                    <div className="ux-stat-card p-3 rounded-3 border-stat-green site-card">
+                      <div className="d-flex align-items-center gap-3">
+                        <div className="stat-icon rounded-3 bg-green-soft text-success p-2 stat-icon-box">
+                          <FontAwesomeIcon icon={faGasPump} />
+                        </div>
+                        <div>
+                          <div className="stat-label small opacity-50 fw-bold">
+                            Native Balance (genesis)
+                          </div>
+                          <div className="stat-value fw-black fs-5 text-truncate">
+                            {treasuryNative.isPending
+                              ? statPlaceholder
+                              : treasuryNative.data
+                                ? `${formatUnits(treasuryNative.data.value, 18)} ${NATIVE_SYMBOL}`
+                                : '—'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {tokenEnabled && decimals.data !== undefined ? (
+                    <>
+                      <div className="col-12 col-md-4">
+                        <div className="ux-stat-card p-3 rounded-3 border-stat-blue site-card">
                           <div className="d-flex align-items-center gap-3">
-                            <div
-                              className={`stat-icon rounded-3 bg-${item.color}-soft text-${item.color} p-2`}
-                              style={{
-                                width: '45px',
-                                height: '45px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              }}
-                            >
-                              <FontAwesomeIcon icon={item.icon} />
+                            <div className="stat-icon rounded-3 bg-blue-soft text-brand p-2 stat-icon-box">
+                              <FontAwesomeIcon icon={faCoins} />
                             </div>
                             <div>
                               <div className="stat-label small opacity-50 fw-bold">
-                                {item.label}
+                                Token Total Supply
                               </div>
                               <div className="stat-value fw-black fs-5 text-truncate">
-                                {item.val !== undefined
-                                  ? `${formatUnits(item.val, item.isNative ? 18 : Number(decimals.data))} ${item.unit}`
+                                {totalSupply.data !== undefined
+                                  ? `${formatUnits(totalSupply.data, Number(decimals.data))} ${symbol.data ?? token20Label()}`
                                   : statPlaceholder}
                               </div>
                             </div>
                           </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="p-3 rounded-3 bg-warning bg-opacity-10 border border-warning border-opacity-25 text-warning small">
-                    Deploy token then refresh — API will expose contract
-                    address, or set VITE_PETH_TOKEN.
-                  </div>
-                )}
+                      <div className="col-12 col-md-4">
+                        <div className="ux-stat-card p-3 rounded-3 border-stat-purple site-card">
+                          <div className="d-flex align-items-center gap-3">
+                            <div className="stat-icon rounded-3 bg-purple-soft text-brand p-2 stat-icon-box">
+                              <FontAwesomeIcon icon={faShieldAlt} />
+                            </div>
+                            <div>
+                              <div className="stat-label small opacity-50 fw-bold">
+                                Treasury Token Balance
+                              </div>
+                              <div className="stat-value fw-black fs-5 text-truncate">
+                                {treasuryTokenBal.data !== undefined
+                                  ? `${formatUnits(treasuryTokenBal.data, Number(decimals.data))} ${symbol.data ?? token20Label()}`
+                                  : statPlaceholder}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="col-12 col-md-8">
+                      <div className="p-3 rounded-3 border border-secondary-subtle text-muted small h-100 d-flex align-items-center">
+                        Optional ERC-20 token not configured. Genesis{' '}
+                        {NATIVE_SYMBOL} balance above is the treasury premine.
+                      </div>
+                    </div>
+                  )}
+                </div>
 
-                {/* Admin Banner */}
                 {isTreasuryWallet && (
-                  <div className="ux-admin-banner mt-4 p-3 rounded-3 bg-info bg-opacity-10 text-info border border-info border-opacity-25 fw-bold text-center">
+                  <div className="ux-admin-banner mt-4 p-3 rounded-3 fw-bold text-center">
                     <FontAwesomeIcon icon={faShieldAlt} className="me-2" />
                     Connected as Treasury Administrator — you can transfer
-                    tokens and pay gas (ECNA).
+                    tokens and pay gas ({NATIVE_SYMBOL}).
                   </div>
                 )}
               </div>
@@ -647,10 +684,10 @@ export default function App() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="card glass-card border-0 rounded-3 shadow-lg h-100 p-4 p-md-5">
+            <div className="card site-card border-0 rounded-3 shadow-sm h-100 p-4 p-md-5">
               {/* Header */}
               <div className="d-flex align-items-center gap-3 mb-4">
-                <div className="bg-primary   rounded-3 text-white p-2 width-span">
+                <div className="bg-brand rounded-3 text-white p-2 width-span">
                   <FontAwesomeIcon icon={faWallet} />
                 </div>
                 <h4 className="fw-black m-0">Your Wallet Balances</h4>
@@ -662,11 +699,17 @@ export default function App() {
                 contract.
               </p>
               <p className="muted" style={{ marginTop: '0.5rem' }}>
-                Network must be <strong>ECNA Chain</strong> (Chain ID{' '}
-                <strong>{import.meta.env.VITE_CHAIN_ID || '4111'}</strong>) RPC:{' '}
+                Network must be <strong>E Canna Mainnet</strong> (Chain ID{' '}
+                <strong>{EXPECTED_CHAIN_ID}</strong>) · RPC:{' '}
                 <code className="mono">{import.meta.env.VITE_RPC_URL || 'https://rpc.ecnascan.com'}</code>
               </p>
 
+              {!isConnected ? (
+                <p className="text-muted text-center py-4 fw-bold mb-0">
+                  Connect a wallet to view balances
+                </p>
+              ) : (
+              <>
               {/* Balance Cards */}
               <div className="row g-3 mb-4 mt-2">
                 {/* Native Balance */}
@@ -681,38 +724,42 @@ export default function App() {
                     </div>
                     <div className="mt-3">
                       <h3 className="fw-black mb-0 text-success">
-                        {native.isPending
-                          ? statPlaceholder
-                          : native.data
-                            ? formatUnits(native.data.value, 18)
-                            : '—'}
+                        {wrongNetwork
+                          ? '—'
+                          : native.isPending
+                            ? statPlaceholder
+                            : native.data
+                              ? formatUnits(native.data.value, 18)
+                              : '—'}
                       </h3>
-                      <small className="opacity-50 fw-bold">ECNA</small>
+                      <small className="opacity-50 fw-bold">{NATIVE_SYMBOL}</small>
                     </div>
                   </div>
                 </div>
 
                 {/* Token Balance */}
                 <div className="col-12 col-sm-6">
-                  <div className="balance-highlight-card p-4 rounded-3 bg-primary-soft border border-primary border-opacity-10">
+                  <div className="balance-highlight-card p-4 rounded-3 bg-primary-soft border border-brand-soft">
                     <div className="d-flex justify-content-between align-items-start">
                       <FontAwesomeIcon
                         icon={faCoins}
-                        className="text-primary"
+                        className="text-brand"
                       />
-                      <span className="badge bg-primary small">Token</span>
+                      <span className="badge bg-brand small">Token</span>
                     </div>
                     <div className="mt-3">
-                      <h3 className="fw-black mb-0 text-primary">
-                        {tokenEnabled &&
-                        (decimals.isPending || tokenBal.isPending)
-                          ? statPlaceholder
-                          : tokenBal.data !== undefined &&
-                              decimals.data !== undefined
-                            ? formatUnits(tokenBal.data, decimals.data)
-                            : tokenEnabled
-                              ? '—'
-                              : 'Waiting...'}
+                      <h3 className="fw-black mb-0 text-brand">
+                        {wrongNetwork
+                          ? '—'
+                          : tokenEnabled &&
+                              (decimals.isPending || tokenBal.isPending)
+                            ? statPlaceholder
+                            : tokenBal.data !== undefined &&
+                                decimals.data !== undefined
+                              ? formatUnits(tokenBal.data, decimals.data)
+                              : tokenEnabled
+                                ? '—'
+                                : '—'}
                       </h3>
                       <small className="opacity-50 fw-bold">
                         {symbol.data ?? token20Label()}
@@ -724,8 +771,8 @@ export default function App() {
 
               {/* Extra Info */}
               <p className="muted" style={{ fontSize: '0.85rem' }}>
-                Native ECNA is required for gas. Low balance? Fund via your
-                local node.
+                Native {NATIVE_SYMBOL} is required for gas. Low balance? Fund
+                from treasury or another wallet on E Canna Mainnet.
               </p>
 
               {/* Add Token Button */}
@@ -733,14 +780,15 @@ export default function App() {
                 <div className="mt-3 d-flex flex-column gap-2">
                   <button
                     type="button"
-                    className="btn btn-primary-gradient w-100 py-3 rounded-3 fw-black shadow-lg"
+                    className="btn btn-primary-gradient w-100 py-3 rounded-3 fw-black shadow-sm"
                     onClick={addPethToMetaMask}
-                    disabled={decimals.data === undefined}
+                    disabled={decimals.data === undefined || wrongNetwork}
                   >
                     <img
                       src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Fox.svg"
                       width="24"
                       className="me-2"
+                      alt=""
                     />
                     Add Token to MetaMask
                   </button>
@@ -758,9 +806,11 @@ export default function App() {
 
               {/* MetaMask Message */}
               {metaMaskTokenMsg && (
-                <div className="mt-3 small text-info text-center fw-bold bg-info bg-opacity-10 p-2 rounded-3">
+                <div className="mt-3 small text-brand text-center fw-bold bg-brand-soft p-2 rounded-3">
                   {metaMaskTokenMsg}
                 </div>
+              )}
+              </>
               )}
             </div>
           </motion.div>
@@ -771,10 +821,10 @@ export default function App() {
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="card glass-card border-0 rounded-3 shadow-lg h-100 p-4 p-md-5">
+            <div className="card site-card border-0 rounded-3 shadow-lg h-100 p-4 p-md-5">
               {/* Header */}
               <div className="d-flex align-items-center gap-3 mb-4">
-                <div className="bg-primary   rounded-3 text-white p-2 width-span">
+                <div className="bg-brand rounded-3 text-white p-2 width-span">
                   <FontAwesomeIcon icon={faPaperPlane} />
                 </div>
                 <h4 className="fw-black m-0">Send {symbol.data ?? 'Assets'}</h4>
@@ -856,7 +906,7 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="card glass-card border-0 rounded-3 shadow-lg h-100 p-4 p-md-5">
+            <div className="card site-card border-0 rounded-3 shadow-lg h-100 p-4 p-md-5">
               {/* Header */}
               <div className="d-flex justify-content-between align-items-center mb-4">
                 <h4 className="fw-black m-0">Live Activity</h4>
@@ -937,10 +987,10 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <div className="card glass-card border-0 rounded-3 shadow-lg h-100 p-4 p-md-5">
+            <div className="card site-card border-0 rounded-3 shadow-lg h-100 p-4 p-md-5">
               {/* Header */}
               <div className="d-flex align-items-center gap-3 mb-4">
-                <div className="bg-primary   rounded-3 text-white p-2 width-span">
+                <div className="bg-brand rounded-3 text-white p-2 width-span">
                   <FontAwesomeIcon icon={faCode} />
                 </div>
                 <h4 className="fw-black m-0">Contract Hub</h4>
