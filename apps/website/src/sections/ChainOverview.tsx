@@ -16,8 +16,8 @@ const highlights = [
   },
   {
     icon: "rpc" as const,
-    title: "Full EVM compatibility",
-    text: "Deploy unchanged Solidity contracts, use standard ABIs, and integrate with ethers.js, viem, Hardhat, and Foundry.",
+    title: "Full EVM compatibility (London)",
+    text: "Deploy Solidity with standard tools. Set compiler EVM to london (Remix must not use default/shanghai). Hardhat/Foundry and ethers.js/viem work unchanged.",
   },
   {
     icon: "database" as const,
@@ -40,14 +40,25 @@ export function ChainOverview() {
             <InfoPanel className="mt-8" title="Chain specification" subtitle="Core L1 parameters" icon={<PanelIcon name="chain" />}>
               <DataRow label="Network name" value={site.chainName} copyable mono={false} />
               <DataRow label="Chain ID" value="4111" copyable required />
-              <DataRow label="Chain ID (hex)" value="0x1017" copyable />
+              <DataRow label="Chain ID (hex)" value="0x100f" copyable />
               <DataRow label="Consensus" value="Clique (Proof of Authority)" mono={false} />
               <DataRow label="Block time" value="~3 seconds" mono={false} />
-              <DataRow label="Virtual machine" value="EVM (Ethereum-compatible)" mono={false} />
+              <DataRow label="Virtual machine" value="EVM — London (Remix: set EVM = london)" mono={false} />
               <DataRow label="Native currency" value={`${NATIVE_SYMBOL} (18 decimals)`} copyable copyValue={NATIVE_SYMBOL} />
               <DataRow label="Block gas limit" value="30000000" copyable />
               <DataRow label="Finality" value="Immediate on inclusion (PoA)" mono={false} />
             </InfoPanel>
+            <div className="mt-4 rounded-lg border border-amber-200/80 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+              <p className="font-semibold">Contract deploy tip</p>
+              <p className="mt-1 text-xs leading-relaxed text-amber-900/90">
+                In Remix choose <strong>EVM Version → london</strong> (not default / shanghai / cancun). Stock Geth Clique
+                does not support Shanghai. See{" "}
+                <a className="font-medium underline" href={`${site.explorerUrl}/verify`}>
+                  Verify &amp; Publish
+                </a>{" "}
+                and docs/DEPLOY-CONTRACTS.md.
+              </p>
+            </div>
           </div>
           <div>
             <h3 className="font-display text-lg font-semibold text-[var(--card-heading)]">Why operators choose PoA EVM</h3>

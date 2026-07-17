@@ -1,63 +1,56 @@
 Deploying to E Canna from Remix — correct flow (READ THIS)
 ==========================================================
 
-!!! GAS ESTIMATION FAILED / "missing revert data" — CHECK THIS FIRST !!!
------------------------------------------------------------------------
-Match Remix **EVM version** to this chain. ECNASCAN deploy/verify target is **shanghai**
-(PUSH0 OK). If Remix uses a newer EVM than your node, deploy / estimateGas can fail.
+!!! REQUIRED: EVM VERSION = london !!!
+--------------------------------------
+E Canna Mainnet (4111) and Testnet (4112) use Clique + stock Geth.
+Genesis stops at **London** (no shanghaiTime). Remix **default** / shanghai /
+cancun / prague / osaka will fail gas estimate or deploy.
 
 FIX (Remix): Left panel **Solidity Compiler** → **Advanced Configurations** →
-**EVM Version** = **shanghai** (or **paris** / **london** if you intentionally target an older fork).
-Then **Compile** again → **Deploy**.
+**EVM Version** = **london** (NOT "default").
+Then **Compile** again → **Deploy & Run** → Injected Provider (MetaMask).
 
-Without a matching EVM version, even a tiny contract may fail to deploy — even when MetaMask / RPC look fine.
+Hardhat / Foundry: set evmVersion to "london" (contracts/hardhat.config.cjs already does).
+
+Without matching EVM, even a tiny contract may fail — even when MetaMask / RPC look fine.
 
 
 TRY THIS FIRST (about 1 minute)
 --------------------------------
 Repo file: contracts/contracts/remix/RemixSmokeTest.sol
 - No imports — paste / open that file in Remix.
-- Compiler 0.8.24+ → Injected Provider - MetaMask → Deploy.
-- If this works = RPC + chain + balance are OK. Then try your real contract.
+- Compiler 0.8.24+ → EVM **london** → Injected Provider - MetaMask → Deploy.
+- If this works = RPC + chain + balance + EVM are OK. Then try your real contract.
 
 
 CODE / CONFIG (repo)
 --------------------
 1) ecnachain/metamask-network.json — chainId 0x100f (4111); rpc https://rpc.ecnascan.com
-2) contracts/hardhat.config.cjs — PETH_RPC_URL / PETH_CHAIN_ID 4111
-3) ecnachain/docker/geth-entrypoint.sh — CORS / vhosts as configured for your environment
-   (restart the Docker container after changing flags)
+2) contracts/hardhat.config.cjs — evmVersion "london", PETH_RPC_URL / chain 4111
+3) docs/DEPLOY-CONTRACTS.md — short user + agent guide
 4) contracts/scripts/check-rpc.cjs — cd contracts && npm run check:rpc → should be OK
 
 
 YOUR STEPS (order)
 ------------------
-A) Node reachable (Hardhat / Anvil / Geth).  npm run check:rpc  → OK
+A) Node reachable.  npm run check:rpc  → OK
 
-B) MetaMask network (manual)
-   - RPC:     https://rpc.ecnascan.com
-   - Chain ID: 4111
-   - Symbol:  ECNA
-   Delete or edit any old wrong network (wrong chain id / port).
+B) MetaMask network
+   - RPC:     https://rpc.ecnascan.com  (testnet: https://testnetrpc.ecnascan.com)
+   - Chain ID: 4111 (testnet: 4112)
+   - Symbol:  ECNA (testnet: tECNA)
 
-C) Balance: the deploying account needs ECNA for gas.
-   ecnachain/.env → ECNA_PRIMARY_ADDRESS = miner; import the matching key carefully (never commit it).
+C) Remix
+   - EVM Version = london
+   - Compile
+   - Environment: Injected Provider - MetaMask
+   - Deploy
 
-D) Remix: Injected Provider - MetaMask (prefer not WalletConnect / Remix VM for this flow)
-
-E) Gas estimation still fails: reset nonce (MetaMask Advanced); ensure enough ECNA; verify with RemixSmokeTest first
-
-
-OPTION — separate Hardhat node (8545 / 31337)
----------------------------------------------
-Use only `npx hardhat node`. Do not mix with the E Canna Docker stack on the same ports.
+D) Verify on explorer → Verify & Publish → EVM london + matching bytecode
 
 
-PETH.sol
---------
-UUPS — proxy + initialize. Deploy simple contracts once the network is confirmed OK.
-
-
-Explorer
---------
-After deploy, the contract should appear on the explorer once the indexer has caught up.
+WHY NOT LIKE ETHEREUM / BNB DEFAULT?
+------------------------------------
+Those networks enable Shanghai+. Stock Geth Clique cannot — listing partners
+hit "clique does not support shanghai fork". We stay on London so public sync works.

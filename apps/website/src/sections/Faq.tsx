@@ -84,11 +84,15 @@ const groups: FaqGroup[] = [
     items: [
       {
         q: "Which tools can I use to deploy contracts?",
-        a: "Hardhat and Foundry are supported. Set chainId 4111 and your RPC URL in hardhat.config or foundry.toml. The contracts workspace includes PETH UUPS deploy scripts.",
+        a: "Hardhat, Foundry, and Remix. Always set compiler EVM version to london (Hardhat already does in this repo). Remix must not use default / shanghai / cancun — Advanced → EVM Version → london. Chain ID 4111 (mainnet) or 4112 (testnet) and the public RPC URL.",
+      },
+      {
+        q: "Why does Remix default fail on E Canna?",
+        a: "Remix default targets a newer Ethereum fork (e.g. osaka/prague). E Canna Clique genesis stops at London so stock Geth exchange nodes can sync. Set EVM Version to london, recompile, then deploy.",
       },
       {
         q: "How do I verify source code?",
-        a: "After deployment, open Verify Contract in ECNASCAN. Provide compiler version, optimization runs, SPDX license, and constructor arguments matching the deployment transaction.",
+        a: "After deployment, open Verify Contract in ECNASCAN. Provide compiler version, optimization runs, SPDX license, EVM london, and bytecode matching the deployment transaction.",
       },
       {
         q: "Does the API require authentication for reads?",

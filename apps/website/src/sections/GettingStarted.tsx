@@ -14,7 +14,7 @@ const steps = [
   {
     step: "03",
     title: "Deploy contracts",
-    body: "Use existing Solidity toolchains. Fund deployer accounts from genesis or treasury scripts. UUPS proxy patterns are supported in the contracts workspace.",
+    body: "Hardhat/Foundry: evmVersion london. Remix: Advanced → EVM Version = london (not default). Fund deployer accounts, then deploy. UUPS proxies are supported in the contracts workspace.",
   },
   {
     step: "04",

@@ -30,7 +30,7 @@ Do **not** use obsolete labels: “ECNA Chain”, “ECNA Smart Chain”, “1 b
 3. Exchange nodes must wipe old `data/`, re-init, and use the **current** `static-nodes.json` from GitHub — old enodes (`e11f51…` mainnet / `9ad0e0…` testnet) are **obsolete**.
 4. `eth.syncing` with `currentBlock: 0` while `highestBlock > 0` is normal early sync — not an error. Empty `admin.peers` after `addPeer` usually means **wrong enode** or firewall.
 5. Sync-only nodes: `--syncmode full`; ignore `etherbase must be explicitly specified` (non-miner).
-6. Remix/Hardhat/verify: **EVM = london**. Solidity 0.8.20+ defaults to shanghai/PUSH0 unless overridden.
+6. Remix/Hardhat/verify: **EVM = london**. Solidity 0.8.20+ defaults to shanghai/PUSH0 unless overridden. Product UI (explorer + website) shows this banner — see [`docs/DEPLOY-CONTRACTS.md`](docs/DEPLOY-CONTRACTS.md).
 
 ## Live networks (same DO server)
 
@@ -74,6 +74,7 @@ Pinned nodekey files (ops only, **gitignored**): `ecnachain/docker/nodekey`, `te
 | GitHub + Chainlist + exchange links | [`docs/GITHUB-AND-CHAINLIST.md`](docs/GITHUB-AND-CHAINLIST.md) |
 | Exchange pack (mainnet) | [`docs/EXCHANGE-LISTING.md`](docs/EXCHANGE-LISTING.md) |
 | Exchange pack (testnet) | [`docs/EXCHANGE-LISTING-TESTNET.md`](docs/EXCHANGE-LISTING-TESTNET.md) |
+| **Deploy contracts (Remix/Hardhat)** | [`docs/DEPLOY-CONTRACTS.md`](docs/DEPLOY-CONTRACTS.md) |
 | Zero-to-live order (English) | [`docs/LIVE-FROM-ZERO.md`](docs/LIVE-FROM-ZERO.md) |
 | Simple one-pager | [`docs/SIMPLE-GUIDE.md`](docs/SIMPLE-GUIDE.md) |
 | SSH deploy secrets (local only) | `scripts/deploy-server.credentials.local.json` (**gitignored**) |

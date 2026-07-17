@@ -147,7 +147,7 @@ Live API: `docs/API-LIVE-DEPLOY.md`
 
 ## 6) Deploy from Remix
 
-This Clique Geth stack uses **shanghai** for deploy/verify (PUSH0 OK). If Remix defaults to a newer EVM than your node supports, you can get gas estimation failures — match Remix **EVM version** to **shanghai** (or the fork your node actually enables).
+This Clique Geth stack uses **london** for deploy/verify. In Remix set **EVM version → london** (never **default**). Details: `docs/DEPLOY-CONTRACTS.md` · `contracts/REMIX_LOCALHOST.txt`.
 
 **Smoke test:** `contracts/contracts/remix/RemixSmokeTest.sol` (no imports)
 

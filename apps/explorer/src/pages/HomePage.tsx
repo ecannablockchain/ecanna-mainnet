@@ -10,6 +10,7 @@ import {
   YAxis,
 } from "recharts";
 import { BrandedLoader } from "../components/BrandedLoader";
+import { LondonEvmBanner } from "../components/LondonEvmBanner";
 import { SkeletonStat } from "../components/Skeleton";
 import { fetchJson, type ApiConfig, type BlockRow, type Dashboard, type TxRow } from "../lib/api";
 import { age, ageBlockInFeed, ageChainTip, fmtGwei, fmtNative, shortAddr, shortHash } from "../lib/format";
@@ -174,6 +175,7 @@ export function HomePage() {
 
     
     <div className="space-y-8">
+      <LondonEvmBanner />
 
   
 

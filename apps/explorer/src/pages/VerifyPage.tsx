@@ -437,10 +437,14 @@ export function VerifyPage() {
         </p>
       </div>
 
-      <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-950">
-        <p className="font-semibold">ECNA Clique uses London EVM (stock Geth)</p>
-        <p className="mt-1 text-xs leading-relaxed">
-          In Remix set <strong>EVM version → london</strong> (not shanghai/cancun/prague). Upstream Geth rejects Clique chains with Shanghai. Solidity 0.8.20+ must explicitly select london (default solc targets emit PUSH0 otherwise).
+      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+        <p className="font-semibold">Deploying contracts — Remix EVM must be london</p>
+        <p className="mt-1 text-xs leading-relaxed text-amber-900/90">
+          E Canna (Clique / stock Geth) supports through <strong>London</strong> only. Do <strong>not</strong> use Remix{" "}
+          <strong>default</strong>, shanghai, cancun, prague, or osaka (deploy / gas estimate will fail). Path:{" "}
+          <strong>Solidity Compiler → Advanced Configurations → EVM Version → london</strong>, then Compile and Deploy
+          with MetaMask. Hardhat: <code className="rounded bg-amber-100/80 px-1">evmVersion: &quot;london&quot;</code>.
+          Verify below with EVM <strong>london</strong> so bytecode matches.
         </p>
       </div>
 

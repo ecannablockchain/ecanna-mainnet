@@ -24,7 +24,8 @@ Testnet native symbol: **tECNA** (E Canna Testnet).
 **Canonical address table (ops / agents / new developers):** [`docs/ADDRESSES-LIVE.md`](./ADDRESSES-LIVE.md).  
 **Short briefing for humans + AI:** [`AGENTS.md`](../AGENTS.md).  
 **GitHub + Chainlist + exchange:** [`docs/GITHUB-AND-CHAINLIST.md`](./GITHUB-AND-CHAINLIST.md).  
-**Exchange listing packs:** [`docs/EXCHANGE-LISTING.md`](./EXCHANGE-LISTING.md) · [`docs/EXCHANGE-LISTING-TESTNET.md`](./EXCHANGE-LISTING-TESTNET.md).
+**Exchange listing packs:** [`docs/EXCHANGE-LISTING.md`](./EXCHANGE-LISTING.md) · [`docs/EXCHANGE-LISTING-TESTNET.md`](./EXCHANGE-LISTING-TESTNET.md).  
+**Deploy contracts (Remix london):** [`docs/DEPLOY-CONTRACTS.md`](./DEPLOY-CONTRACTS.md).
 
 > **Timeline:** Client go-live wipe 15 July 2026 (RPC harden). **17 July 2026:** removed `shanghaiTime` (stock Geth Clique cannot sync Shanghai) and re-genesis’d both nets; pinned `docker/nodekey` so enode IDs stay stable; updated GitHub `static-nodes.json`. Miner `0x9F926a69ba55c2F436A51108f8eb96E21fC5a329`. Public RPC must stay behind `rpc-public-guard`.
 
@@ -428,7 +429,8 @@ After `deploy-fresh-golive.ps1`: confirm `docker exec … geth attach --exec adm
 5. Expect `admin.peers` length ≥ 1, then rising `eth.blockNumber`
 6. Optional: use public RPC `https://rpc.ecnascan.com` without running a node
 
-Full packs: [`docs/EXCHANGE-LISTING.md`](./EXCHANGE-LISTING.md), [`docs/EXCHANGE-LISTING-TESTNET.md`](./EXCHANGE-LISTING-TESTNET.md).
+Full packs: [`docs/EXCHANGE-LISTING.md`](./EXCHANGE-LISTING.md), [`docs/EXCHANGE-LISTING-TESTNET.md`](./EXCHANGE-LISTING-TESTNET.md).  
+Contract deploy UX for end users: [`docs/DEPLOY-CONTRACTS.md`](./DEPLOY-CONTRACTS.md) (shown on explorer home / verify + website FAQ & stack).
 
 ---
 
@@ -762,6 +764,7 @@ Rotate SSH and DB passwords if shared externally. Prefer SSH keys for production
 
 | Document | Topic |
 |----------|--------|
+| `docs/DEPLOY-CONTRACTS.md` | **Remix/Hardhat london EVM** — user + agent deploy guide |
 | `AGENTS.md` | Short briefing for humans + AI agents |
 | `docs/ADDRESSES-LIVE.md` | **Live** miner / treasury / faucet addresses after go-live |
 | `docs/GITHUB-AND-CHAINLIST.md` | Private GitHub repos + Chainlist / ethereum-lists PR status |
