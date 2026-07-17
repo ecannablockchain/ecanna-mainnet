@@ -71,9 +71,8 @@ const genesis = {
     istanbulBlock: 0,
     berlinBlock: 0,
     londonBlock: 0,
-    // Shanghai enables PUSH0 — required for modern Remix/solc. Cancun is NOT enabled:
-    // geth Clique PoA panics on Cancun (nil beacon root) in v1.13.x.
-    shanghaiTime: 0,
+    // Stock Geth Clique rejects Shanghai (`clique does not support shanghai fork`).
+    // Do NOT set shanghaiTime — exchange sync peers will drop the chain.
     clique: {
       period: 3,
       epoch: 30000,

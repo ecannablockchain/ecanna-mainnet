@@ -17,7 +17,7 @@ Public GitHub repos are **sanitized mirrors** — never copy `.env` / `*.hex` / 
 | Mainnet display | **E Canna Mainnet** |
 | Testnet display | **E Canna Testnet** |
 | Mainnet supply (genesis) | **1 Crore** = **10,000,000** ECNA |
-| EVM for Remix / Hardhat / verify | **shanghai** (PUSH0 OK; **not** cancun/prague) |
+| EVM for Remix / Hardhat / verify | **london** (stock Geth Clique; **not** shanghai/cancun/prague) |
 
 Do **not** use obsolete labels: “ECNA Chain”, “ECNA Smart Chain”, “1 billion / 1B” premine, Cancun as default deploy EVM, or the old host IP `50.28.84.113`.
 
@@ -124,7 +124,7 @@ Details: `docs/GITHUB-AND-CHAINLIST.md`.
 
 ## Do not
 
-- Publish Cancun/Prague as chain EVM for this Clique Geth stack
+- Publish Shanghai/Cancun/Prague as chain EVM for this Clique Geth stack (stock Geth: `clique does not support shanghai fork`)
 - Expose Geth `8545`/`18545` on `0.0.0.0`
 - Point nginx public RPC straight at Geth (bypass guard)
 - Wipe only one network’s SQL while leaving the other inconsistent after a dual genesis reset

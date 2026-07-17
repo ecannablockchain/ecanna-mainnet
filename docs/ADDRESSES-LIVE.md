@@ -1,8 +1,8 @@
 # E Canna — Live production addresses (post client go-live)
 
-**Last updated:** 15 July 2026  
+**Last updated:** 17 July 2026  
 **Server:** `168.144.69.102` (`ecnascan.com`)  
-**Status:** Fresh genesis + RPC harden (localhost Geth, public guard, UFW). See also root [`AGENTS.md`](../AGENTS.md).
+**Status:** Fresh genesis (**London** EVM / Clique — no `shanghaiTime`) + RPC harden. See also root [`AGENTS.md`](../AGENTS.md).
 
 > **Do not put private keys in git.** Miner / faucet keys live only in server hex files and `server/.env` (gitignored).
 
@@ -18,7 +18,7 @@
 | Decimals | 18 | 18 |
 | Genesis supply | **1 Crore** = 10,000,000 ECNA | Treasury **100M** tECNA + faucet **100M** tECNA |
 | Premine wei (treasury) | `10000000000000000000000000` | `100000000000000000000000000` |
-| EVM for deploy/verify | **shanghai** (PUSH0; no Cancun) | **shanghai** |
+| EVM for deploy/verify | **london** (stock Geth Clique) | **london** |
 
 ---
 
