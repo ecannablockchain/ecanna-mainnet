@@ -96,7 +96,7 @@ export function NetworkLiveStats() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             <StatTile
               icon={<PanelIcon name="chain" />}
-              label={`${sym} reference price`}
+              label={`${sym} price`}
               value={ref.loading ? "…" : ref.usd != null ? fmtUsd(ref.usd) : "—"}
               sub={
                 ref.usd24hChange != null ? (
@@ -106,7 +106,6 @@ export function NetworkLiveStats() {
                   </span>
                 ) : null
               }
-              note="Nexdax ECNAUSDT via api.ecnascan.com (CORS-safe proxy)."
             />
             <StatTile
               icon={<PanelIcon name="gas" />}

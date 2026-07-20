@@ -127,7 +127,7 @@ export function RatesAndFees() {
                       {r.native != null ? fmtNativeAmount(r.native, sym, 6) : "—"}
                     </p>
                     {r.usd != null ? (
-                      <p className="font-mono text-[10px] text-[var(--card-muted)]">{fmtUsd(r.usd, 4)} ref.</p>
+                      <p className="font-mono text-[10px] text-[var(--card-muted)]">{fmtUsd(r.usd, 4)}</p>
                     ) : null}
                   </div>
                   {r.native != null ? (
@@ -140,8 +140,7 @@ export function RatesAndFees() {
         </div>
 
         <p className="mt-6 text-xs leading-relaxed text-[var(--card-muted)]">
-          USD figures use an external reference index for illustration. Native {sym} and optional {T20} (ERC-20) fees are
-          always paid on-chain in {sym}.
+          Fees are paid on-chain in {sym}. Optional {T20} (ERC-20) transfers also use {sym} for gas.
         </p>
       </div>
     </section>

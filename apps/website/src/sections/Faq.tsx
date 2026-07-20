@@ -42,7 +42,7 @@ const groups: FaqGroup[] = [
       },
       {
         q: `Why does the site show a USD price for ${site.nativeSymbol}?`,
-        a: "The USD figure is the live ECNA/USDT last price from the Nexdax ticker API (polled; webhooks not used yet). Market-cap display uses last price × 1 Crore genesis supply as a reference.",
+        a: `The USD price is the live ${site.nativeSymbol} market price shown for convenience (for example next to gas fee estimates). On-chain fees are always paid in ${site.nativeSymbol}.`,
       },
       {
         q: "How much does a simple transfer cost?",
