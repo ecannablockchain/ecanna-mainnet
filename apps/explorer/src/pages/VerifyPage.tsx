@@ -283,10 +283,8 @@ export function VerifyPage() {
       .then(([m, d]) => {
         if (!c) return;
         if (m.bytecode) setBytecode(m.bytecode);
-        const abiTrim = abi.trim();
-        if (m.suggestedAbi && (abiTrim === "" || abiTrim === "[]")) {
-          setAbi(m.suggestedAbi);
-        }
+        // Do NOT auto-fill generic ERC-20 suggested ABI — that caused wrong Read/Write.
+        // ABI is generated from Solidity compile on submit (Etherscan-style).
         if (!nameTouched.current && !hasLocalGuessRef.current && m.contractName) {
           setName(m.contractName);
           setNameHint(
@@ -349,21 +347,8 @@ export function VerifyPage() {
       setOut({ ok: false, text: "This contract is already verified. Re-verification is not allowed." });
       return;
     }
-    const bc = bytecode.trim();
-    const cc = compilerCreationBytecode.trim();
-    const cr = creationTxInput.trim();
-    if (!bc && !cc) {
-      setOut({
-        ok: false,
-        text: "Bytecode proof required: paste compiler bytecode (artifacts → bytecode) and creation tx input, or deployedBytecode from compile output.",
-      });
-      return;
-    }
-    if (cc && !cr && !bc) {
-      setOut({
-        ok: false,
-        text: "When using compiler creation bytecode, also paste the deployment transaction input (or deployedBytecode).",
-      });
+    if (!source.trim()) {
+      setOut({ ok: false, text: "Paste Solidity source code (ABI is generated automatically on verify)." });
       return;
     }
     const evm = evmVersion.trim().toLowerCase();
@@ -380,7 +365,8 @@ export function VerifyPage() {
       address: address.trim(),
       contractName: name.trim() || "Contract",
       sourceCode: source,
-      abi,
+      abi: abi.trim() && abi.trim() !== "[]" ? abi : "[]",
+      autoCompile: "1",
       compilerKind,
       compilerVersion: cv,
       openSourceLicense,
@@ -400,7 +386,13 @@ export function VerifyPage() {
       const raw = await r.text();
       let msg = raw;
       try {
-        const j = JSON.parse(raw) as { status?: string; message?: string; result?: string };
+        const j = JSON.parse(raw) as {
+          status?: string;
+          message?: string;
+          result?: string;
+          contractName?: string;
+          abiAuto?: boolean;
+        };
         if (j.message) msg = j.message;
         const ok = r.ok && j.status === "1";
         let verifiedAddress: string | undefined;
@@ -408,7 +400,9 @@ export function VerifyPage() {
           const parsed = parseVerifiedContractAddress(j.result, body.address);
           if (parsed) verifiedAddress = parsed;
           if (verifiedAddress) {
-            msg = `Verification successful — contract ${verifiedAddress}`;
+            msg = j.abiAuto
+              ? `Verification successful — ABI auto-generated from source. Contract ${verifiedAddress}`
+              : `Verification successful — contract ${verifiedAddress}`;
           } else if (j.result) {
             msg = `Verification successful — contract ${j.result}`;
           }
@@ -433,7 +427,8 @@ export function VerifyPage() {
           Verify & Publish Contract Source Code
         </h1>
         <p className="mt-1 text-sm text-slate-600">
-          Same flow as BscScan: enter contract details first, then paste source and ABI. Verification is permanent — bytecode must match on-chain code exactly.
+          Same flow as Etherscan / BscScan: paste Solidity source — <strong>ABI is generated automatically</strong> when
+          you verify. Match compiler version, optimization, and EVM <strong>london</strong> to the deployment.
         </p>
       </div>
 
@@ -589,7 +584,7 @@ export function VerifyPage() {
       {step === 2 ? (
         <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-display text-lg font-semibold text-slate-900">Step 2 — Source code & ABI</h2>
+            <h2 className="font-display text-lg font-semibold text-slate-900">Step 2 — Source code</h2>
             <button
               type="button"
               onClick={() => setStep(1)}
@@ -603,11 +598,11 @@ export function VerifyPage() {
             Address: <span className="font-mono">{address}</span> · Compiler: {compilerVersion} · License:{" "}
             {LICENSE_OPTIONS.find((l) => l.value === openSourceLicense)?.label ?? openSourceLicense}
           </p>
-          <p className="rounded-md border border-sky-100 bg-sky-50/90 px-3 py-2 text-xs text-sky-950">
-            <strong>Auto-fetch:</strong> deployed bytecode is filled from RPC. A <strong>suggested ABI</strong> is filled when the chain responds like a {token20Label()} token (bytecode pattern, or{" "}
-            <code className="rounded bg-white/80 px-0.5">name</code>/<code className="rounded bg-white/80 px-0.5">symbol</code>/<code className="rounded bg-white/80 px-0.5">decimals</code> on a proxy), plus common OpenZeppelin-style extras (mint, burn, roles, UUPS). It is <strong>not</strong> compiled from your Solidity — for a{" "}
-            <strong>perfect</strong> ABI match, paste the <code className="rounded bg-white/80 px-0.5">abi</code> from{" "}
-            <code className="rounded bg-white/80 px-0.5">artifacts/.../ContractName.json</code>.
+          <p className="rounded-md border border-emerald-100 bg-emerald-50/90 px-3 py-2 text-xs text-emerald-950">
+            <strong>Auto ABI (industry standard):</strong> leave the ABI box empty. On submit, the API compiles your
+            Solidity (OpenZeppelin imports supported) and stores the real ABI for Read / Write. You may paste a Hardhat
+            artifact JSON as source, or optionally paste an ABI override. Do <strong>not</strong> use a generic token
+            ABI — that caused incomplete Read/Write before.
           </p>
 
           <label className="block text-sm">
@@ -623,10 +618,11 @@ export function VerifyPage() {
           <label className="block text-sm">
             <span className="font-medium text-slate-800">ABI</span>
             <span className="ml-1 text-xs font-normal text-slate-500">
-              (JSON array, or full Hardhat artifact with <code className="rounded bg-slate-100 px-0.5">abi</code>)
+              (optional — auto from compile; or paste Hardhat <code className="rounded bg-slate-100 px-0.5">abi</code>)
             </span>
             <textarea
               className="mt-1 h-28 w-full rounded-md border border-slate-300 px-3 py-2 font-mono text-xs"
+              placeholder="[]  ← leave empty for auto ABI"
               value={abi}
               onChange={(e) => setAbi(normalizeAbiInput(e.target.value))}
             />

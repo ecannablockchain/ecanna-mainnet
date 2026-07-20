@@ -2,31 +2,51 @@ import type { Request, Response } from "express";
 import { ethers } from "ethers";
 import { prisma } from "../lib/prisma.js";
 import { provider } from "../lib/chain.js";
+import { compileSoliditySource } from "../lib/solcCompile.js";
 import {
   assertBytecodeMatches,
   parseOptionalHexField,
 } from "../lib/verifyBytecode.js";
 
+function parseAbiJson(abiRaw: string): unknown[] | null {
+  const t = abiRaw.trim();
+  if (!t || t === "[]") return null;
+  try {
+    const parsed: unknown = JSON.parse(t);
+    if (Array.isArray(parsed)) return parsed.length ? parsed : null;
+    if (parsed && typeof parsed === "object" && Array.isArray((parsed as { abi?: unknown }).abi)) {
+      const arr = (parsed as { abi: unknown[] }).abi;
+      return arr.length ? arr : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /**
- * Strict verification: bytecode must match on-chain code.
- * Once verified, address cannot be updated or re-verified.
+ * Industry-standard verify: paste source → server compiles → ABI + bytecode auto.
+ * Manual ABI still accepted as override. Once verified, source is locked (ABI-only fix via abiOnly=1).
  */
 export async function verifyContractHandler(req: Request, res: Response) {
   const body = req.body as Record<string, string>;
   const address = (body.contractaddress || body.address || "").toLowerCase();
-  const contractName = body.contractname || body.ContractName || body.contractName || "Contract";
-  const compilerVersion = body.compilerversion || body.compilerVersion || "0.8.24";
+  let contractName = body.contractname || body.ContractName || body.contractName || "Contract";
+  const compilerVersion = body.compilerversion || body.compilerVersion || "v0.8.28+commit.7893614a";
   const sourceCode = body.sourceCode || body.SourceCode || "";
   const abiRaw = body.abi || body.ABI || "[]";
   const optimization = (body.optimizationUsed || body.optimization || "0") === "1";
   const runs = parseInt(body.runs || body.Runs || "200", 10);
-  const compiledRuntime = (body.compiledRuntimeBytecode || body.runtimeBytecode || "").trim();
+  let compiledRuntime = (body.compiledRuntimeBytecode || body.runtimeBytecode || "").trim();
   const evmVersion = (body.evmVersion || body.EvmVersion || "london").trim() || "london";
   const compilerKind =
     (body.compilerKind || body.compilerType || body.CompilerType || "solidity-single-file").trim() ||
     "solidity-single-file";
   const openSourceLicense =
     (body.openSourceLicense || body.licenseType || body.LicenseType || "MIT").trim() || "MIT";
+  const forceAuto =
+    String(body.autoCompile || body.autoAbi || "1").trim() !== "0" &&
+    String(body.autoCompile || "").toLowerCase() !== "false";
 
   if (!address || !ethers.isAddress(address)) {
     return res.status(400).json({ status: "0", message: "Invalid address" });
@@ -37,30 +57,16 @@ export async function verifyContractHandler(req: Request, res: Response) {
     String(body.abiOnly || body.updateAbi || body.ABIOnly || "").trim() === "1" ||
     String(body.abiOnly || body.updateAbi || "").toLowerCase() === "true";
 
-  let abiStr = abiRaw.trim();
-  try {
-    const parsed: unknown = JSON.parse(abiStr);
-    let abiArr: unknown[];
-    if (Array.isArray(parsed)) {
-      abiArr = parsed;
-    } else if (parsed && typeof parsed === "object" && Array.isArray((parsed as { abi?: unknown }).abi)) {
-      abiArr = (parsed as { abi: unknown[] }).abi;
-    } else {
-      return res.status(400).json({ status: "0", message: "ABI must be a JSON array or { abi: [...] } artifact" });
-    }
-    if (abiArr.length === 0) {
-      return res.status(400).json({
-        status: "0",
-        message: "ABI is empty. Paste the abi array from your compiler artifacts.",
-      });
-    }
-    abiStr = JSON.stringify(abiArr);
-  } catch {
-    return res.status(400).json({ status: "0", message: "Invalid ABI JSON" });
-  }
+  let abiArr = parseAbiJson(abiRaw);
+  let abiStr = abiArr ? JSON.stringify(abiArr) : "";
+  let compilerCreationFromCompile: string | undefined;
+  let compileWarnings: string[] = [];
 
   /** Critical correction: replace stored ABI only (no schema change; source stays locked). */
   if (existing && abiOnly) {
+    if (!abiArr) {
+      return res.status(400).json({ status: "0", message: "ABI required for abiOnly update" });
+    }
     await prisma.contractVerification.update({
       where: { address },
       data: { abi: abiStr },
@@ -85,31 +91,76 @@ export async function verifyContractHandler(req: Request, res: Response) {
     return res.status(400).json({ status: "0", message: "Missing source code" });
   }
 
+  if (evmVersion === "shanghai" || evmVersion === "cancun" || evmVersion === "prague") {
+    return res.status(400).json({
+      status: "0",
+      message: `EVM version "${evmVersion}" is not supported on ECNA Clique (stock Geth). Use london (or paris/berlin).`,
+    });
+  }
+
+  // Etherscan-style: compile source → ABI (+ bytecode proof) automatically when ABI empty / autoCompile
+  const shouldCompile = forceAuto || !abiArr;
+  if (shouldCompile) {
+    try {
+      const compiled = await compileSoliditySource({
+        sourceCode,
+        contractName: contractName !== "Contract" ? contractName : undefined,
+        compilerVersion,
+        optimization,
+        runs: Number.isFinite(runs) ? runs : 200,
+        evmVersion,
+      });
+      abiArr = compiled.abi;
+      abiStr = JSON.stringify(compiled.abi);
+      if (compiled.contractName) contractName = compiled.contractName;
+      compileWarnings = compiled.warnings;
+      if (!compiledRuntime && compiled.deployedBytecode) {
+        compiledRuntime = compiled.deployedBytecode;
+      }
+      if (compiled.creationBytecode) {
+        compilerCreationFromCompile = compiled.creationBytecode;
+      }
+    } catch (e) {
+      if (!abiArr) {
+        const msg = e instanceof Error ? e.message : String(e);
+        return res.status(400).json({
+          status: "0",
+          message: `Auto-compile failed (ABI could not be generated from source). ${msg}`,
+        });
+      }
+      // Manual ABI present — continue without compile
+    }
+  }
+
+  if (!abiArr || !abiStr) {
+    return res.status(400).json({
+      status: "0",
+      message:
+        "ABI is empty and auto-compile did not produce one. Paste Solidity source (or flattened source / Hardhat artifact JSON).",
+    });
+  }
+
   const creationTxInput = parseOptionalHexField(
     body.creationTxInput ?? body.creationtxinput ?? body.contractCreationCodeInput,
   );
   if (creationTxInput === "invalid") {
     return res.status(400).json({ status: "0", message: "Invalid creationTxInput hex" });
   }
-  const compilerCreationBytecode = parseOptionalHexField(
+  let compilerCreationBytecode = parseOptionalHexField(
     body.compilerCreationBytecode ?? body.compilerBytecode ?? body.bytecodeObject ?? body.creationBytecodeObject,
   );
   if (compilerCreationBytecode === "invalid") {
     return res.status(400).json({ status: "0", message: "Invalid compilerCreationBytecode hex" });
+  }
+  if (!compilerCreationBytecode && compilerCreationFromCompile) {
+    compilerCreationBytecode = compilerCreationFromCompile;
   }
 
   if (!compiledRuntime.trim() && !compilerCreationBytecode) {
     return res.status(400).json({
       status: "0",
       message:
-        "Bytecode proof required. Paste compiler bytecode (artifacts → bytecode) and creation tx input, or deployedBytecode from compile output.",
-    });
-  }
-
-  if (evmVersion === "shanghai" || evmVersion === "cancun" || evmVersion === "prague") {
-    return res.status(400).json({
-      status: "0",
-      message: `EVM version "${evmVersion}" is not supported on ECNA Clique (stock Geth). Use london (or paris/berlin).`,
+        "Bytecode proof required. Auto-compile did not yield bytecode — paste deployedBytecode / creation bytecode, or ensure compiler settings match the deployment (EVM london).",
     });
   }
 
@@ -132,18 +183,27 @@ export async function verifyContractHandler(req: Request, res: Response) {
         compilerKind,
         compilerVersion,
         optimization,
-        runs,
+        runs: Number.isFinite(runs) ? runs : 200,
         evmVersion,
         exactBytecodeMatch,
         openSourceLicense,
         sourceCode,
         abi: abiStr,
         ...(creationTxInput !== undefined ? { creationTxInput } : {}),
-        ...(compilerCreationBytecode !== undefined ? { compilerCreationBytecode } : {}),
+        ...(compilerCreationBytecode !== undefined && compilerCreationBytecode !== "invalid"
+          ? { compilerCreationBytecode }
+          : {}),
       },
     });
 
-    return res.json({ status: "1", message: "OK", result: address });
+    return res.json({
+      status: "1",
+      message: "OK",
+      result: address,
+      contractName,
+      abiAuto: shouldCompile,
+      warnings: compileWarnings.slice(0, 5),
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Verification failed";
     return res.status(400).json({ status: "0", message: msg });

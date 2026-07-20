@@ -22,21 +22,23 @@
     "clear-indexed": "tsx scripts/clear-indexed.ts"
   },
   "dependencies": {
+    "@openzeppelin/contracts": "^5.2.0",
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "ethers": "^6.11.0",
     "express": "^4.21.0",
-    "jsonwebtoken": "^9.0.2",
     "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
     "pino": "^9.0.0",
-    "pino-http": "^10.0.0"
+    "pino-http": "^10.0.0",
+    "solc": "^0.8.28"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
-    "@types/jsonwebtoken": "^9.0.7",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^20.11.0",
     "@vitejs/plugin-react": "^6.0.1",
     "prisma": "^5.22.0",

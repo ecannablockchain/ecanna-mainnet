@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ContractVerifiedPanel, type VerifiedForPanel } from "./ContractVerifiedPanel";
 import { fetchJson } from "../lib/api";
 import { TokenProfileEditor, type TokenProfile } from "./TokenProfileEditor";
+import { HoldersAnalytics } from "./HoldersAnalytics";
 import { token20Label } from "../lib/chainBranding";
 import { age, fmtNative, fmtToken, shortAddr, shortHash } from "../lib/format";
 
@@ -523,19 +524,14 @@ export function TokenContractTabs({
         ) : null}
 
         {tab === "holders" ? (
-          <div className="space-y-3">
-            <p className="text-xs text-slate-600">
-              Balances are computed from indexed <code className="rounded bg-slate-100 px-1">Transfer</code> logs (handles mint/burn).
-            </p>
+          <div className="space-y-4">
             {holdersErr ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">{holdersErr}</div>
             ) : !holders && !holdersErr ? (
               <p className="text-sm text-slate-500">Loading holders…</p>
             ) : holders ? (
               <>
-                <p className="text-sm font-medium text-slate-800">
-                  Top {holders.items.length} holders (of {holders.total.toLocaleString()} total)
-                </p>
+                <HoldersAnalytics items={holders.items} totalHolders={holders.total} />
                 <div className="pes-table-wrap">
                   <table className="w-full min-w-[720px] border-collapse">
                     <thead>
@@ -582,27 +578,15 @@ export function TokenContractTabs({
         ) : null}
 
         {tab === "info" ? (
-          <div className="space-y-4 text-sm">
-            <TokenProfileEditor contractAddress={tokenAddress} onSaved={setTokenProfile} />
-            <dl className="grid gap-2 sm:grid-cols-2">
-              <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
-                <dt className="text-xs font-medium uppercase text-slate-500">Token contract</dt>
-                <dd className="break-all font-mono text-xs text-slate-900">{tokenAddress}</dd>
-              </div>
-              <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
-                <dt className="text-xs font-medium uppercase text-slate-500">Decimals</dt>
-                <dd className="font-mono">{info?.decimals ?? "—"}</dd>
-              </div>
-              <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
-                <dt className="text-xs font-medium uppercase text-slate-500">Total supply</dt>
-                <dd className="font-mono">{info?.totalSupply != null ? amountFmt(info.totalSupply) : "—"}</dd>
-              </div>
-              <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-2">
-                <dt className="text-xs font-medium uppercase text-slate-500">Indexed transfers</dt>
-                <dd className="font-mono">{info?.indexedTransfers.toLocaleString() ?? "—"}</dd>
-              </div>
-            </dl>
-          </div>
+          <TokenProfileEditor
+            contractAddress={tokenAddress}
+            onSaved={setTokenProfile}
+            tokenName={info?.name ?? chainNameHint ?? contractName}
+            tokenSymbol={info?.symbol ?? chainSymbolHint ?? sym}
+            decimals={info?.decimals ?? null}
+            totalSupplyLabel={info?.totalSupply != null ? amountFmt(info.totalSupply) : undefined}
+            transfersLabel={info ? info.indexedTransfers.toLocaleString() : undefined}
+          />
         ) : null}
 
         {tab === "contract" ? (
