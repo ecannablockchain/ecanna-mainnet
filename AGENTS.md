@@ -161,6 +161,7 @@ Details: `docs/GITHUB-AND-CHAINLIST.md`.
 - Wipe only one network’s SQL while leaving the other inconsistent after a dual genesis reset
 - Use obsolete host `50.28.84.113` in docs or examples — use `*.ecnascan.com`
 - Leave `%TEMP%\ecna-*` or `.tmp-github/` clones after GitHub work
+- Run **Anvil** (or any Foundry local node) on the production server — live = Geth Clique only
 
 ## Naming / PR checklist
 
@@ -171,4 +172,6 @@ Details: `docs/GITHUB-AND-CHAINLIST.md`.
 - After enode/nodekey change: update `static-nodes.json` + GitHub + `docs/EXCHANGE-LISTING*.md` + this file
 - Docs in **English**
 - Addresses → `docs/ADDRESSES-LIVE.md`
+- Wrong Read/Write ABI after old verify → `abiOnly=1` + `autoCompile=1` (see KT §13)
 - After any agent temp files: delete them; never leave `*.log` / `*.tgz` / `*.zip` in the repo root
+- Cleanup checklist → KT §22

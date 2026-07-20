@@ -2,7 +2,7 @@
 
 **Audience:** Developers / DevOps joining the ECNASCAN project  
 **Scope:** Mainnet + Testnet (production on DigitalOcean)  
-**Last updated:** 20 July 2026 (token logos on lists/tx detail; Holders analytics; Read/Write as Proxy; verify auto-ABI)  
+**Last updated:** 20 July 2026 (cleanup ops; verify auto-ABI + abiOnly fix; logos; Holders; Read/Write as Proxy)  
 **Domain:** `ecnascan.com`  
 **Production server IP:** `168.144.69.102`
 
@@ -56,6 +56,7 @@ Testnet native symbol: **tECNA** (E Canna Testnet).
 19. [Troubleshooting](#19-troubleshooting)
 20. [Security & credentials](#20-security--credentials)
 21. [Related docs](#21-related-docs)
+22. [Cleanup (local + server + GitHub)](#22-cleanup-local--server--github)
 
 ---
 
@@ -569,40 +570,67 @@ npm run deploy   # or network-specific script in package.json
 ### Rules (strict)
 
 1. **Bytecode must match** on-chain code (creation bytecode + tx input, or deployed bytecode).
-2. **Once verified — locked.** No update, no re-verify.
+2. **Source locked after verify.** Source cannot be changed. Wrong ABI can be corrected with **`abiOnly=1`** (see below).
 3. **Shanghai/Cancun/Prague EVM rejected** at API level (use **london**).
 4. Default EVM on verify form: **london**.
-5. Bytecode must match on-chain (strict). Once verified — locked.
+5. **Never use Anvil on the production server** — live chains are **Geth Clique** only. Anvil/Foundry is laptop local-dev only.
 
-### What to paste
+### Auto ABI (current behaviour)
 
-| Field | Source |
-|-------|--------|
-| Source code | Remix or `.sol` file |
-| ABI | Compiler output / artifact JSON |
-| Compiler version | Must match compile (e.g. `v0.8.24+commit...`) |
-| EVM version | `london` (or paris — must match compile) |
-| Compiler bytecode | Artifact `bytecode` / `bytecode.object` |
-| Creation tx input | Full hex from deployment transaction |
-| Deployed bytecode | Artifact `deployedBytecode` (optional if creation match provided) |
+Paste **Solidity source** (flattened OK; `@openzeppelin/` imports resolved on the API host). If ABI is empty / `autoCompile=1`, the API:
 
-Auto-fill: Step 2 loads bytecode and creation tx from API when indexer has the deployment tx.
+1. Compiles with `solc` (+ OpenZeppelin from `server/node_modules`)
+2. Stores the **real ABI** for Read / Write
+3. Uses compiled bytecode for match when possible
 
-### API
+**Do not** paste a generic ERC-20 “suggested” ABI — that caused wrong Read/Write historically (AccessControl / UUPS functions that are not in the source).
+
+### Fixing an old wrong ABI (ops)
+
+If a contract was verified **before** auto-compile and shows wrong Read/Write (e.g. name `Context`, fake `hasRole` / `upgradeToAndCall`):
 
 ```http
 POST /api/verify/etherscan
 Content-Type: application/json
 
 {
-  "address": "0x...",
-  "contractName": "MyToken",
+  "contractaddress": "0x...",
+  "contractname": "GreenGloryNFT",
+  "abiOnly": "1",
+  "autoCompile": "1",
+  "abi": "[]"
+}
+```
+
+API recompiles from the **stored source**, updates ABI (+ contract name when provided). Source stays locked.
+
+### What to paste (new verifies)
+
+| Field | Source |
+|-------|--------|
+| Source code | Remix flatten / `.sol` / Standard-JSON / Hardhat artifact JSON |
+| ABI | Optional — leave empty for auto-compile |
+| Contract name | Main contract (e.g. `GreenGloryNFT`, not `Context`) |
+| Compiler version | Must match compile |
+| EVM version | `london` |
+| Compiler / creation / deployed bytecode | Optional proofs for exact match |
+
+Auto-fill: Step 2 loads bytecode and creation tx from API when the indexer has the deployment tx.
+
+### API (new verify)
+
+```http
+POST /api/verify/etherscan
+Content-Type: application/json
+
+{
+  "contractaddress": "0x...",
+  "contractname": "MyToken",
   "sourceCode": "...",
-  "abi": "[...]",
-  "compilerVersion": "v0.8.24+commit.e11b9ed9",
+  "abi": "[]",
+  "autoCompile": "1",
+  "compilerVersion": "v0.8.28+commit.7893614a",
   "evmVersion": "london",
-  "compilerCreationBytecode": "0x...",
-  "creationTxInput": "0x...",
   "optimizationUsed": "1",
   "runs": "200"
 }
@@ -729,9 +757,11 @@ See also:
 | Restart testnet API | `pm2 restart ecna-api-testnet ecna-indexer-testnet` |
 | DB schema update | `npx prisma db push` in `server/` |
 | Rebuild mainnet explorer | `npm run build -w apps/explorer` + copy to `/var/www/explorer` |
-| Verify contract | Explorer → Verify & Publish (EVM london + bytecode proof) |
+| Verify contract | Explorer → Verify & Publish (EVM london; ABI auto from source) |
+| Fix wrong Read/Write ABI | `POST /api/verify/etherscan` with `abiOnly=1` + `autoCompile=1` |
 | Add token logo | Token page → Info → connect deployer wallet |
 | See logo on lists / tx | `/verified-contracts`, `/token-transfers`, `/tx/:hash` after logo saved |
+| Cleanup after hotfix | Delete `%TEMP%\ecna-*`, server `/root/*.tgz`, `pm2 flush`; never leave junk in repo root |
 | Request testnet coins | Testnet explorer faucet or POST `/api/v1/faucet` |
 | Add validator | `ECNA_VALIDATORS=0x...,0x...` + rebuild genesis (new chain) |
 
@@ -747,7 +777,9 @@ See also:
 | Exchange: `addPeer` true, `peers` empty | Obsolete enode after our wipe | Give current enode from `static-nodes.json` / AGENTS.md |
 | Exchange: sync stays at 0 forever | Firewall or wrong networkid | Open outbound 30303/30313; `--networkid 4111` / `4112`; `--syncmode full` |
 | Verify rejected “bytecode mismatch” | Wrong optimizer / compiler / EVM | Recompile with exact same settings; paste correct bytecode |
-| Verify “already verified” | Address was verified before | Cannot re-verify (by design) |
+| Verify “already verified” | Address was verified before | Source locked; use **`abiOnly=1`** to fix ABI only |
+| Read/Write shows wrong functions | Old verify used generic suggested ABI | `abiOnly=1` + `autoCompile=1` (recompile from stored source) |
+| Anvil / Foundry on production? | Must not run on server | Live = Geth Clique only; Anvil is laptop local-dev |
 | API “database down” | Wrong `DATABASE_URL` in server `.env` | Use `127.0.0.1:1433` on server; check `docker ps` for `ecna-mssql` |
 | Explorer shows old UI | Static files not updated | Rebuild explorer + `cp` to `/var/www/...` |
 | Indexer behind chain head | Normal catch-up or stuck | `pm2 logs ecna-indexer`; check RPC; increase `INDEXER_BATCH_SIZE` |
@@ -795,6 +827,24 @@ Rotate SSH and DB passwords if shared externally. Prefer SSH keys for production
 | `ecnachain/docs/DEPLOYMENT.md` | Validators, bootnodes, hardening |
 | `ecnachain/docs/BACKUP-RECOVERY.md` | Chain backup |
 | `scripts/DEPLOY-SERVER.local.md` | SSH + publish quick reference (local) |
+
+---
+
+## 22. Cleanup (local + server + GitHub)
+
+After deploys / agent work, remove leftovers so secrets and junk never linger.
+
+| Place | Delete |
+|-------|--------|
+| Laptop `%TEMP%` | `ecna-*` folders (hotfix / GitHub staging) |
+| Laptop repo | `.tmp-github/`, root `*.tgz` / `*.log` / `*.zip` (never commit) |
+| Server `/root` | `server.tgz`, `explorer.tgz`, other deploy tarballs |
+| Server | `pm2 flush`; **no Anvil**; no accidental `/opt/ecnascan/.git` |
+| GitHub | Secret-free mirrors only — no `.env`, `*.hex`, credentials |
+
+**Keep:** Geth `data/` LevelDB files (including `*.log` under `chaindata` — those are DB WAL, not debug logs).
+
+**Production chain:** Geth Clique only. Anvil persistent is **local laptop / Foundry** — never install or run Anvil on `168.144.69.102`.
 
 ---
 

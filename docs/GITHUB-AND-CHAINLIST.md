@@ -1,6 +1,6 @@
 # GitHub, Chainlist, and exchange sharing
 
-**Last updated:** 17 July 2026  
+**Last updated:** 20 July 2026  
 
 **Secrets stay local only:** `scripts/github-credentials.local.json`, `scripts/GITHUB.local.md`, `scripts/deploy-server.credentials.local.json`, `**/docker/nodekey`, `*.hex` (**gitignored — never commit**).
 

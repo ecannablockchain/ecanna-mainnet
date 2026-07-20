@@ -4,7 +4,17 @@
 
 **Fresh deploy vs resume:** `SETUP_NEW_LAPTOP.txt` section **0**.
 
-**More detail:** `docs/LOCAL-DEV-COMMANDS.md` (commands), `docs/API-LIVE-DEPLOY.md` (live server + domain).
+**More detail:** `docs/LOCAL-DEV-COMMANDS.md` (commands), `docs/API-LIVE-DEPLOY.md` (live server + domain), full KT [`docs/KT-ECNA-MAINNET-TESTNET.md`](./KT-ECNA-MAINNET-TESTNET.md).
+
+### Live stack facts (quick)
+
+| Item | Value |
+|------|--------|
+| Production chain | **Geth Clique** (not Anvil) |
+| EVM | **london** |
+| Verify | Paste source → ABI auto-compiled; wrong old ABI → `abiOnly=1` |
+| Token logo | Deployer edits Info → shows on verified list, transfers, tx detail |
+| Cleanup | Delete `%TEMP%\ecna-*`, server `/root/*.tgz`; see KT §22 |
 
 ### Defaults aligned for local / live E Canna
 
