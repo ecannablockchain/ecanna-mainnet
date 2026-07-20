@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PageDataSkeleton } from "../components/Skeleton";
+import { TokenLogo } from "../components/TokenLogo";
 import { fetchJson } from "../lib/api";
 import { token20Label } from "../lib/chainBranding";
 import { age, fmtFeeNative, fmtToken, shortAddr, shortHash } from "../lib/format";
@@ -20,6 +21,7 @@ type Row = {
   action?: string;
   tokenSymbol?: string | null;
   tokenDecimals?: number;
+  logoUrl?: string | null;
 };
 
 export function TransfersPage() {
@@ -98,11 +100,16 @@ export function TransfersPage() {
                   </Link>
                 </td>
                 <td className="pes-td text-right font-mono text-xs">
-                  {fmtToken(
-                    r.value,
-                    r.tokenDecimals ?? 18,
-                    (r.tokenSymbol && r.tokenSymbol.trim()) || shortAddr(r.token, 4),
-                  )}
+                  <span className="inline-flex items-center justify-end gap-1.5">
+                    <TokenLogo src={r.logoUrl} alt="" size={18} />
+                    <span>
+                      {fmtToken(
+                        r.value,
+                        r.tokenDecimals ?? 18,
+                        (r.tokenSymbol && r.tokenSymbol.trim()) || shortAddr(r.token, 4),
+                      )}
+                    </span>
+                  </span>
                 </td>
                 <td className="pes-td text-right font-mono text-xs">{fmtFeeNative(r.feeWei)}</td>
               </tr>

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PageDataSkeleton } from "../components/Skeleton";
+import { TokenLogo } from "../components/TokenLogo";
 import { fetchJson } from "../lib/api";
 import { fmtNative, shortAddr } from "../lib/format";
 
@@ -17,6 +18,7 @@ export type VerifiedContractRow = {
   verifiedAt: string;
   balanceWei: string;
   txCount: number;
+  logoUrl?: string | null;
 };
 
 type VerifiedContractsResponse = {
@@ -189,7 +191,8 @@ export function VerifiedContractsPage() {
               {data.items.map((row) => (
                 <tr key={row.address}>
                   <td className="pes-td">
-                    <span className="inline-flex items-center font-mono text-xs">
+                    <span className="inline-flex items-center gap-2 font-mono text-xs">
+                      <TokenLogo src={row.logoUrl} alt="" size={22} />
                       <Link to={`/address/${row.address}`} className="pes-link">
                         {shortAddr(row.address)}
                       </Link>

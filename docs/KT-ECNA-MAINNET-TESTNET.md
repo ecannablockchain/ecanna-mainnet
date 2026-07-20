@@ -2,7 +2,7 @@
 
 **Audience:** Developers / DevOps joining the ECNASCAN project  
 **Scope:** Mainnet + Testnet (production on DigitalOcean)  
-**Last updated:** 17 July 2026 (London genesis wipe + pinned P2P nodekeys + exchange listing fixes)  
+**Last updated:** 20 July 2026 (token logos on lists/tx detail; Holders analytics; Read/Write as Proxy; verify auto-ABI)  
 **Domain:** `ecnascan.com`  
 **Production server IP:** `168.144.69.102`
 
@@ -612,7 +612,7 @@ Content-Type: application/json
 
 ## 14. Token branding (logo, social links)
 
-After deploying a token contract, the **deployer wallet** can add metadata on the token page.
+After deploying a token contract, the **deployer wallet** can add metadata on the token page (**Info** tab).
 
 | Field | Example |
 |-------|---------|
@@ -628,9 +628,26 @@ After deploying a token contract, the **deployer wallet** can add metadata on th
 2. **Connect deployer wallet** (same address that sent the deploy transaction)
 3. Fill fields → **Save profile** → sign message in wallet
 
-**API:** `PUT /api/v1/contract/:addr/token-profile` with `signature`, `signerAddress`, `timestamp`.
+**Where logos appear (Etherscan / BscScan style):**
+
+| Surface | Path |
+|---------|------|
+| Token / address header | `/token/:addr`, `/address/:addr` |
+| Verified contracts directory | `/verified-contracts` |
+| Token transfers list | `/token-transfers` |
+| Transaction details (token transfer rows) | `/tx/:hash` |
+
+**API:** `PUT /api/v1/contract/:addr/token-profile` with `signature`, `signerAddress`, `timestamp`.  
+List endpoints attach `logoUrl` from `ContractTokenProfile` when present.
 
 Deployer is resolved from indexed deployment transaction (`Transaction.from` where `deployedContractAddress` matches).
+
+**Related explorer UX (both mainnet + testnet):**
+
+- Token **Holders** tab: concentration donut, tier table, depth bars
+- Contract **Read** / **Write**: collapsed accordion (Expand all)
+- Proxies: **Read as Proxy** / **Write as Proxy** when EIP-1967 / EIP-1167 / beacon detected
+- Verify: auto-compile ABI from Solidity (`solc` + OpenZeppelin on API host) when ABI omitted
 
 ---
 
@@ -714,6 +731,7 @@ See also:
 | Rebuild mainnet explorer | `npm run build -w apps/explorer` + copy to `/var/www/explorer` |
 | Verify contract | Explorer → Verify & Publish (EVM london + bytecode proof) |
 | Add token logo | Token page → Info → connect deployer wallet |
+| See logo on lists / tx | `/verified-contracts`, `/token-transfers`, `/tx/:hash` after logo saved |
 | Request testnet coins | Testnet explorer faucet or POST `/api/v1/faucet` |
 | Add validator | `ECNA_VALIDATORS=0x...,0x...` + rebuild genesis (new chain) |
 

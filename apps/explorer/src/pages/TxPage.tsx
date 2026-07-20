@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { fetchJson, type TxDecodedInput, type TxRow } from "../lib/api";
 import { token20Label } from "../lib/chainBranding";
 import { BrandedLoader } from "../components/BrandedLoader";
+import { TokenLogo } from "../components/TokenLogo";
 import { age, fmtFeeNative, fmtNative, shortAddr } from "../lib/format";
 
 function CopyBtn({ text, label = "Copy" }: { text: string; label?: string }) {
@@ -213,9 +214,10 @@ export function TxPage() {
                     <Link to={`/address/${x.to}`} className="font-mono text-brand-600 hover:underline">
                       {shortAddr(x.to, 8)}
                     </Link>
-                    <div className="mt-1 font-mono text-slate-900">
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5 font-mono text-slate-900">
+                      <TokenLogo src={x.logoUrl} alt="" size={18} />
                       <span className="font-semibold">{x.valueFormatted}</span>{" "}
-                      <Link to={`/address/${x.token}`} className="text-brand-600 hover:underline">
+                      <Link to={`/address/${x.token}`} className="inline-flex items-center gap-1 text-brand-600 hover:underline">
                         {x.symbol}
                       </Link>
                       <span className="ml-1 text-[10px] text-slate-400">({x.decimals} decimals)</span>

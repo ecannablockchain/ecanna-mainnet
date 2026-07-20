@@ -4,6 +4,7 @@ import { BrandedLoader } from "../components/BrandedLoader";
 import { ContractVerifiedPanel } from "../components/ContractVerifiedPanel";
 import { SkeletonLine } from "../components/Skeleton";
 import { TokenContractTabs } from "../components/TokenContractTabs";
+import { TokenLogo } from "../components/TokenLogo";
 import { fetchJson, type TxRow } from "../lib/api";
 import { token20Label } from "../lib/chainBranding";
 import { age, fmtNative, fmtToken, shortAddr, shortHash } from "../lib/format";
@@ -68,6 +69,7 @@ type Erc20TransferRow = {
   /** From API: on-chain token `symbol()` (+ decimals) */
   tokenSymbol?: string | null;
   tokenDecimals?: number;
+  logoUrl?: string | null;
 };
 
 type TokenHolding = {
@@ -521,7 +523,10 @@ export function AddressPage() {
                   </div>
                 </td>
                 <td className="pes-td text-right font-mono text-xs">
-                  {xferAmountLabel(r)}
+                  <span className="inline-flex items-center justify-end gap-1.5">
+                    <TokenLogo src={r.logoUrl} alt="" size={18} />
+                    <span>{xferAmountLabel(r)}</span>
+                  </span>
                 </td>
               </tr>
             ))}

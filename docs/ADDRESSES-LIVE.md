@@ -1,8 +1,8 @@
 # E Canna — Live production addresses (post client go-live)
 
-**Last updated:** 17 July 2026  
+**Last updated:** 20 July 2026  
 **Server:** `168.144.69.102` (`ecnascan.com`)  
-**Status:** London EVM / Clique (no `shanghaiTime`) + RPC harden + **pinned P2P nodekeys**. See root [`AGENTS.md`](../AGENTS.md).
+**Status:** London EVM / Clique (no `shanghaiTime`) + RPC harden + **pinned P2P nodekeys**. Token logos from Info profile show on verified-contracts, token-transfers, and tx details. See root [`AGENTS.md`](../AGENTS.md).
 
 > **Do not put private keys or `nodekey` in public git.** Miner / faucet / nodekey live only in server + local gitignored files.
 

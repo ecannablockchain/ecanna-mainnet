@@ -25,6 +25,7 @@ import { searchHandler } from "./routes/search.js";
 import { attachCookies } from "./lib/cookies.js";
 import { loginSiteUser, logoutSiteUser, meSiteUser, registerSiteUser } from "./routes/siteAuth.js";
 import { enrichTransactionDetail, fetchTokenMeta } from "./lib/txEnrich.js";
+import { fetchLogoUrlsByAddress } from "./lib/tokenLogos.js";
 import { getChainTotals } from "./lib/chainStats.js";
 import { publicRpcUrl } from "./lib/publicUrls.js";
 import {
@@ -523,6 +524,7 @@ app.get("/api/v1/address/:addr/erc20-transfers", async (req, res, next) => {
         metaByToken.set(t, await fetchTokenMeta(provider, t));
       }),
     );
+    const logos = await fetchLogoUrlsByAddress(prisma, uniqueTokens);
     const items = rows.map((r: TokenTransferRow) => {
       const m = metaByToken.get(r.token.toLowerCase()) ?? { decimals: 18, symbol: "" };
       return {
@@ -537,6 +539,7 @@ app.get("/api/v1/address/:addr/erc20-transfers", async (req, res, next) => {
         action: methodLabel(r.transaction.input),
         tokenDecimals: m.decimals,
         tokenSymbol: m.symbol || null,
+        logoUrl: logos.get(r.token.toLowerCase()) ?? null,
       };
     });
     res.json({ items });
@@ -1025,6 +1028,10 @@ app.get("/api/v1/verified-contracts", async (req, res, next) => {
     ]);
 
     const nativeSymbol = process.env.NATIVE_SYMBOL || "ECNA";
+    const logos = await fetchLogoUrlsByAddress(
+      prisma,
+      items.map((r) => r.address),
+    );
     const enriched = await Promise.all(
       items.map(async (row) => {
         let balanceWei = "0";
@@ -1036,7 +1043,13 @@ app.get("/api/v1/verified-contracts", async (req, res, next) => {
         const txCount = await prisma.transaction.count({
           where: { OR: [{ from: row.address }, { to: row.address }] },
         });
-        return { ...row, balanceWei, txCount, verifiedAt: row.verifiedAt.toISOString() };
+        return {
+          ...row,
+          balanceWei,
+          txCount,
+          verifiedAt: row.verifiedAt.toISOString(),
+          logoUrl: logos.get(row.address.toLowerCase()) ?? null,
+        };
       }),
     );
 
@@ -1164,6 +1177,7 @@ app.get("/api/v1/tokens/transfers", async (req, res, next) => {
         xferMeta.set(t, await fetchTokenMeta(provider, t));
       }),
     );
+    const logos = await fetchLogoUrlsByAddress(prisma, uniq);
     const items = rows.map((r: TokenTransferRow) => {
       const m = xferMeta.get(r.token.toLowerCase()) ?? { decimals: 18, symbol: "" };
       return {
@@ -1181,6 +1195,7 @@ app.get("/api/v1/tokens/transfers", async (req, res, next) => {
         action: methodLabel(r.transaction.input),
         tokenDecimals: m.decimals,
         tokenSymbol: m.symbol || null,
+        logoUrl: logos.get(r.token.toLowerCase()) ?? null,
       };
     });
     res.json({ items, total, limit: take, offset: skip });

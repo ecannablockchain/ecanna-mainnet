@@ -58,6 +58,7 @@ export type TxTokenTransferRow = {
   valueFormatted: string;
   symbol: string;
   decimals: number;
+  logoUrl?: string | null;
 };
 
 export type TxDecodedArg = {
@@ -129,4 +130,6 @@ export type TokenXferRow = {
   /** On-chain token metadata (when API could read the contract) */
   tokenSymbol?: string | null;
   tokenDecimals?: number;
+  /** Deployer-published logo from token Info profile */
+  logoUrl?: string | null;
 };

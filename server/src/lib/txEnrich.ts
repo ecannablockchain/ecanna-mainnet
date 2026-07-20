@@ -202,6 +202,17 @@ export async function enrichTransactionDetail(
     }),
   );
 
+  const logoRows = await prisma.contractTokenProfile.findMany({
+    where: { address: { in: tokenAddrs }, logoUrl: { not: null } },
+    select: { address: true, logoUrl: true },
+  });
+  const logoMap = new Map<string, string | null>();
+  for (const a of tokenAddrs) logoMap.set(a, null);
+  for (const r of logoRows) {
+    const url = r.logoUrl?.trim() || null;
+    if (url) logoMap.set(r.address.toLowerCase(), url);
+  }
+
   const tokenTransfers = logs.map((l) => {
     const m = metaMap.get(l.token.toLowerCase()) ?? { decimals: 18, symbol: "???" };
     const valueFormatted = ethers.formatUnits(l.value, m.decimals);
@@ -213,6 +224,7 @@ export async function enrichTransactionDetail(
       valueFormatted,
       symbol: m.symbol,
       decimals: m.decimals,
+      logoUrl: logoMap.get(l.token.toLowerCase()) ?? null,
     };
   });
 
