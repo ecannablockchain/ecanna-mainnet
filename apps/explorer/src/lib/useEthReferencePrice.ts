@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 
-/** Live spot USD index (CoinGecko `ethereum` id) — UI labels use your native ticker; not an on-chain ECNA oracle. */
+/**
+ * Live ECNA/USDT spot from Nexdax ticker (poll — no webhooks yet).
+ * // Old placeholder (wrong for ECNA — was ETH):
+ * // https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true&include_market_cap=true
+ */
+const NEXDAX_ECNA_TICKER = "https://api.nexdax.com/api/v1/ticker/24hr?symbol=ECNAUSDT";
+
+/** Mainnet genesis supply (1 Crore) — used for reference market cap until exchange provides one. */
+const ECNA_GENESIS_SUPPLY = 10_000_000;
+
 export type EthRefPrice = {
   usd: number | null;
   usd24hChange: number | null;
@@ -8,7 +17,16 @@ export type EthRefPrice = {
   loading: boolean;
 };
 
-export function useEthReferencePrice(pollMs = 120_000): EthRefPrice {
+function num(v: unknown): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim() !== "") {
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+export function useEthReferencePrice(pollMs = 60_000): EthRefPrice {
   const [usd, setUsd] = useState<number | null>(null);
   const [usd24hChange, setUsd24hChange] = useState<number | null>(null);
   const [marketCapUsd, setMarketCapUsd] = useState<number | null>(null);
@@ -18,18 +36,15 @@ export function useEthReferencePrice(pollMs = 120_000): EthRefPrice {
     let cancelled = false;
     const load = async () => {
       try {
-        const url =
-          "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true&include_market_cap=true";
-        const r = await fetch(url);
+        const r = await fetch(NEXDAX_ECNA_TICKER);
         if (!r.ok) throw new Error(String(r.status));
-        const j = (await r.json()) as {
-          ethereum?: { usd?: number; usd_24h_change?: number; usd_market_cap?: number };
-        };
+        const j = (await r.json()) as Record<string, unknown>;
         if (cancelled) return;
-        const e = j.ethereum;
-        setUsd(typeof e?.usd === "number" ? e.usd : null);
-        setUsd24hChange(typeof e?.usd_24h_change === "number" ? e.usd_24h_change : null);
-        setMarketCapUsd(typeof e?.usd_market_cap === "number" ? e.usd_market_cap : null);
+        const last = num(j.lastPrice);
+        const changePct = num(j.priceChangePercent);
+        setUsd(last);
+        setUsd24hChange(changePct);
+        setMarketCapUsd(last != null ? last * ECNA_GENESIS_SUPPLY : null);
       } catch {
         if (!cancelled) {
           setUsd(null);

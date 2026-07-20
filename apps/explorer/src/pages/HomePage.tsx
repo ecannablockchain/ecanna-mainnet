@@ -194,7 +194,7 @@ export function HomePage() {
    
 }
               label={`${sym} PRICE`}
-              note={`${sym} spot USD index (placeholder — not on-chain oracle)`}
+              note={`${sym} spot USD from Nexdax ECNAUSDT (poll)`}
             >
               {ethRef.loading ? (
                 <SkeletonStat className="h-7 w-32" />
@@ -220,7 +220,7 @@ export function HomePage() {
             <DashStatBlock
               icon={<IconGlobe className="h-5 w-5 text-[var(--card-muted)]" />}
               label={`${sym} MARKET CAP (REF.)`}
-              note={`${sym} market cap (placeholder — same USD index)`}
+              note={`${sym} market cap ≈ lastPrice × 1 Crore genesis supply`}
             >
               {ethRef.loading ? (
                 <SkeletonStat className="h-7 w-36" />

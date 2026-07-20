@@ -12,6 +12,7 @@
 |------|--------|
 | Production chain | **Geth Clique** (not Anvil) |
 | EVM | **london** |
+| ECNA USD price | Nexdax `ECNAUSDT` ticker (poll) — not CoinGecko ETH |
 | Verify | Paste source → ABI auto-compiled; wrong old ABI → `abiOnly=1` |
 | Token logo | Deployer edits Info → shows on verified list, transfers, tx detail |
 | Cleanup | Delete `%TEMP%\ecna-*`, server `/root/*.tgz`; see KT §22 |

@@ -125,7 +125,7 @@ export function Layout() {
               <span className="font-semibold" style={{ color: "var(--topbar-heading)" }}>
                 {nativeSymbol}
               </span>
-              <span>Price (USD ref.):</span>
+              <span>Price:</span>
               {ethRef.loading ? (
                 <span className="opacity-75">…</span>
               ) : ethRef.usd != null ? (

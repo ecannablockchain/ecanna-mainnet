@@ -42,7 +42,7 @@ const groups: FaqGroup[] = [
       },
       {
         q: `Why does the site show a USD price for ${site.nativeSymbol}?`,
-        a: "The USD figure is a reference index (external ETH spot) used only to illustrate gas costs in familiar units. It is not an on-chain oracle and does not represent a listed market price for ECNA unless you operate an exchange.",
+        a: "The USD figure is the live ECNA/USDT last price from the Nexdax ticker API (polled; webhooks not used yet). Market-cap display uses last price × 1 Crore genesis supply as a reference.",
       },
       {
         q: "How much does a simple transfer cost?",

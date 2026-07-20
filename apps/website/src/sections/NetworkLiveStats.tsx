@@ -106,7 +106,7 @@ export function NetworkLiveStats() {
                   </span>
                 ) : null
               }
-              note="Reference USD for gas estimates."
+              note="Nexdax ECNAUSDT last price (poll)."
             />
             <StatTile
               icon={<PanelIcon name="gas" />}

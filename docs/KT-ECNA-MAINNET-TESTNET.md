@@ -2,7 +2,7 @@
 
 **Audience:** Developers / DevOps joining the ECNASCAN project  
 **Scope:** Mainnet + Testnet (production on DigitalOcean)  
-**Last updated:** 20 July 2026 (cleanup ops; verify auto-ABI + abiOnly fix; logos; Holders; Read/Write as Proxy)  
+**Last updated:** 20 July 2026 (Nexdax ECNAUSDT live price; verify abiOnly; logos; Holders; Proxy)  
 **Domain:** `ecnascan.com`  
 **Production server IP:** `168.144.69.102`
 
@@ -523,6 +523,17 @@ cp -r apps/explorer/dist/* /var/www/explorer/
 ```
 
 Dual-network links: website and explorer read peer URLs from `VITE_*` env vars (see `apps/website/src/lib/networks.ts`).
+
+### ECNA USD price (explorer + website)
+
+| Item | Value |
+|------|--------|
+| Live feed | `https://api.nexdax.com/api/v1/ticker/24hr?symbol=ECNAUSDT` |
+| Fields used | `lastPrice` → USD price; `priceChangePercent` → 24h % |
+| Market cap (UI) | `lastPrice × 10,000,000` (1 Crore genesis) — reference until exchange market-cap API exists |
+| Update style | Browser poll (~60s). **No webhooks yet.** |
+| Code | `apps/explorer/src/lib/useEthReferencePrice.ts`, `apps/website/src/lib/useReferencePrice.ts` |
+| Deprecated | CoinGecko `ethereum` price (commented in those files — was wrong for ECNA) |
 
 ---
 
