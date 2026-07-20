@@ -528,12 +528,13 @@ Dual-network links: website and explorer read peer URLs from `VITE_*` env vars (
 
 | Item | Value |
 |------|--------|
-| Live feed | `https://api.nexdax.com/api/v1/ticker/24hr?symbol=ECNAUSDT` |
-| Fields used | `lastPrice` → USD price; `priceChangePercent` → 24h % |
-| Market cap (UI) | `lastPrice × 10,000,000` (1 Crore genesis) — reference until exchange market-cap API exists |
-| Update style | Browser poll (~60s). **No webhooks yet.** |
-| Code | `apps/explorer/src/lib/useEthReferencePrice.ts`, `apps/website/src/lib/useReferencePrice.ts` |
-| Deprecated | CoinGecko `ethereum` price (commented in those files — was wrong for ECNA) |
+| Live feed (upstream) | `https://api.nexdax.com/api/v1/ticker/24hr?symbol=ECNAUSDT` |
+| Public proxy (browser) | `GET /api/v1/market/ecna` on `api.ecnascan.com` / `testnetapi…` |
+| Why proxy? | Nexdax has **no CORS** — direct browser `fetch` fails; CoinGecko ETH worked only because it allowed CORS |
+| Fields used | `lastPrice` → USD; `priceChangePercent` → 24h % |
+| Market cap (UI) | `lastPrice × 10,000,000` (1 Crore genesis) |
+| Update style | Browser polls our API (~60s). Server caches Nexdax ~30s. **No webhooks yet.** |
+| Code | `server/src/lib/ecnaMarket.ts` + explorer/website price hooks |
 
 ---
 

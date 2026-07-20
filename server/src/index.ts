@@ -28,6 +28,7 @@ import { enrichTransactionDetail, fetchTokenMeta } from "./lib/txEnrich.js";
 import { fetchLogoUrlsByAddress } from "./lib/tokenLogos.js";
 import { getChainTotals } from "./lib/chainStats.js";
 import { publicRpcUrl } from "./lib/publicUrls.js";
+import { fetchEcnaMarketQuote } from "./lib/ecnaMarket.js";
 import {
   fetchBlocksKeyset,
   fetchTransactionsKeyset,
@@ -178,6 +179,20 @@ app.get("/api/v1/config", async (_req, res, next) => {
 
 app.get("/api/v1/faucet", faucetStatusHandler);
 app.post("/api/v1/faucet", faucetRequestHandler);
+
+/**
+ * Live ECNA/USDT quote (proxied from Nexdax — avoids browser CORS).
+ * Poll this from explorer/website; no webhooks yet.
+ */
+app.get("/api/v1/market/ecna", async (_req, res, next) => {
+  try {
+    const quote = await fetchEcnaMarketQuote();
+    res.setHeader("Cache-Control", "public, max-age=15");
+    res.json(quote);
+  } catch (e) {
+    next(e);
+  }
+});
 
 app.get("/api/v1/stats", async (_req, res, next) => {
   try {

@@ -194,7 +194,7 @@ export function HomePage() {
    
 }
               label={`${sym} PRICE`}
-              note={`${sym} spot USD from Nexdax ECNAUSDT (poll)`}
+              note={`${sym} spot USD from Nexdax ECNAUSDT (via API proxy)`}
             >
               {ethRef.loading ? (
                 <SkeletonStat className="h-7 w-32" />

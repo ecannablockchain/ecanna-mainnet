@@ -1,15 +1,12 @@
 import { useEffect, useState } from "react";
+import { fetchJson } from "./api";
 
 /**
- * Live ECNA/USDT spot from Nexdax ticker (poll — no webhooks yet).
- * // Old placeholder (wrong for ECNA — was ETH):
- * // https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true&include_market_cap=true
+ * Live ECNA USD via our API proxy → Nexdax ECNAUSDT (server-side; no browser CORS).
+ * // Old CoinGecko ETH (wrong) — do not use:
+ * // https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&...
+ * // Direct Nexdax from browser fails (no Access-Control-Allow-Origin).
  */
-const NEXDAX_ECNA_TICKER = "https://api.nexdax.com/api/v1/ticker/24hr?symbol=ECNAUSDT";
-
-/** Mainnet genesis supply (1 Crore) — reference market cap until exchange provides one. */
-const ECNA_GENESIS_SUPPLY = 10_000_000;
-
 export type RefPrice = {
   usd: number | null;
   usd24hChange: number | null;
@@ -17,14 +14,11 @@ export type RefPrice = {
   loading: boolean;
 };
 
-function num(v: unknown): number | null {
-  if (typeof v === "number" && Number.isFinite(v)) return v;
-  if (typeof v === "string" && v.trim() !== "") {
-    const n = Number(v);
-    return Number.isFinite(n) ? n : null;
-  }
-  return null;
-}
+type MarketApi = {
+  usd: number;
+  usd24hChange: number | null;
+  marketCapUsd: number;
+};
 
 export function useReferencePrice(pollMs = 60_000): RefPrice {
   const [usd, setUsd] = useState<number | null>(null);
@@ -36,15 +30,11 @@ export function useReferencePrice(pollMs = 60_000): RefPrice {
     let cancelled = false;
     const load = async () => {
       try {
-        const r = await fetch(NEXDAX_ECNA_TICKER);
-        if (!r.ok) throw new Error(String(r.status));
-        const j = (await r.json()) as Record<string, unknown>;
+        const j = await fetchJson<MarketApi>("/api/v1/market/ecna");
         if (cancelled) return;
-        const last = num(j.lastPrice);
-        const changePct = num(j.priceChangePercent);
-        setUsd(last);
-        setUsd24hChange(changePct);
-        setMarketCapUsd(last != null ? last * ECNA_GENESIS_SUPPLY : null);
+        setUsd(typeof j.usd === "number" ? j.usd : null);
+        setUsd24hChange(typeof j.usd24hChange === "number" ? j.usd24hChange : null);
+        setMarketCapUsd(typeof j.marketCapUsd === "number" ? j.marketCapUsd : null);
       } catch {
         if (!cancelled) {
           setUsd(null);

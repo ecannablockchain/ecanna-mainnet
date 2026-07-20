@@ -106,7 +106,7 @@ export function NetworkLiveStats() {
                   </span>
                 ) : null
               }
-              note="Nexdax ECNAUSDT last price (poll)."
+              note="Nexdax ECNAUSDT via api.ecnascan.com (CORS-safe proxy)."
             />
             <StatTile
               icon={<PanelIcon name="gas" />}
