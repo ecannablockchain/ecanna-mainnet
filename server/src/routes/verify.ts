@@ -64,18 +64,52 @@ export async function verifyContractHandler(req: Request, res: Response) {
 
   /** Critical correction: replace stored ABI only (no schema change; source stays locked). */
   if (existing && abiOnly) {
+    // Allow empty body ABI + autoCompile so ops can fix old wrong suggested ABIs from source.
+    if (!abiArr && (forceAuto || true)) {
+      try {
+        const compiled = await compileSoliditySource({
+          sourceCode: existing.sourceCode,
+          contractName:
+            contractName && contractName !== "Contract" && contractName !== "Context"
+              ? contractName
+              : undefined,
+          compilerVersion: existing.compilerVersion || compilerVersion,
+          optimization: existing.optimization,
+          runs: existing.runs,
+          evmVersion: existing.evmVersion || evmVersion,
+        });
+        abiArr = compiled.abi;
+        abiStr = JSON.stringify(compiled.abi);
+        if (compiled.contractName) contractName = compiled.contractName;
+        compileWarnings = compiled.warnings;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        return res.status(400).json({
+          status: "0",
+          message: `abiOnly auto-compile failed: ${msg.slice(0, 2000)}`,
+        });
+      }
+    }
     if (!abiArr) {
       return res.status(400).json({ status: "0", message: "ABI required for abiOnly update" });
     }
+    const nameUpdate =
+      contractName &&
+      contractName !== "Contract" &&
+      contractName !== existing.contractName
+        ? { contractName }
+        : {};
     await prisma.contractVerification.update({
       where: { address },
-      data: { abi: abiStr },
+      data: { abi: abiStr, ...nameUpdate },
     });
     return res.json({
       status: "1",
       message: "OK",
       result: address,
       updated: "abi",
+      contractName: nameUpdate.contractName || existing.contractName,
+      warnings: compileWarnings,
     });
   }
 
