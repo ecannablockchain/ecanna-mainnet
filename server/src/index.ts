@@ -8,6 +8,7 @@ import { pinoHttp } from "pino-http";
 import { ethers } from "ethers";
 import { prisma } from "./lib/prisma.js";
 import { bytecodeLooksLikeErc20, getTokenExplorerAbiJson } from "./lib/chainContractMeta.js";
+import { detectProxy } from "./lib/proxyDetect.js";
 import { resolveDisplayMiner } from "./lib/cliqueMiner.js";
 import { normalizeStoredAddresses, shouldNormalizeAddressesOnStart } from "./lib/normalize-addresses.js";
 import { buildCorsOptions } from "./lib/corsConfig.js";
@@ -876,6 +877,37 @@ app.get("/api/v1/contract/:addr/chain-meta", async (req, res, next) => {
       symbol,
       isErc20Like: erc20Like,
       suggestedAbi,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+/**
+ * Detect EIP-1967 / EIP-1167 / beacon / implementation() proxies (Etherscan / BscScan style).
+ * Used by explorer for “Read as Proxy” / “Write as Proxy” tabs.
+ */
+app.get("/api/v1/contract/:addr/proxy", async (req, res, next) => {
+  try {
+    const addr = req.params.addr.toLowerCase();
+    if (!ethers.isAddress(addr)) return res.status(400).json({ error: "Invalid address" });
+    const info = await detectProxy(provider, addr);
+    let implementationVerified = false;
+    let implementationName: string | null = null;
+    if (info.implementation) {
+      const row = await prisma.contractVerification.findUnique({
+        where: { address: info.implementation },
+        select: { contractName: true },
+      });
+      if (row) {
+        implementationVerified = true;
+        implementationName = row.contractName;
+      }
+    }
+    res.json({
+      ...info,
+      implementationVerified,
+      implementationName,
     });
   } catch (e) {
     next(e);

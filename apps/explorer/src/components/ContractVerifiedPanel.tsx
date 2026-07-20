@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { BrowserProvider, Contract, JsonRpcProvider, formatUnits } from "ethers";
 import {
@@ -81,7 +81,17 @@ export type VerifiedForPanel = {
   constructorDecodeNote?: string | null;
 };
 
-type Tab = "code" | "abi" | "read" | "write";
+type Tab = "code" | "abi" | "read" | "write" | "read-proxy" | "write-proxy";
+
+type ProxyApi = {
+  isProxy: boolean;
+  proxyType: string | null;
+  implementation: string | null;
+  admin: string | null;
+  beacon: string | null;
+  implementationVerified: boolean;
+  implementationName: string | null;
+};
 
 export function ContractVerifiedPanel({
   verified,
@@ -99,6 +109,11 @@ export function ContractVerifiedPanel({
   const [chainDeployedBytecode, setChainDeployedBytecode] = useState<string | null>(null);
   const [expandAllRead, setExpandAllRead] = useState(false);
   const [expandAllWrite, setExpandAllWrite] = useState(false);
+  const [expandAllReadProxy, setExpandAllReadProxy] = useState(false);
+  const [expandAllWriteProxy, setExpandAllWriteProxy] = useState(false);
+  const [proxyInfo, setProxyInfo] = useState<ProxyApi | null>(null);
+  const [implVerified, setImplVerified] = useState<VerifiedForPanel | null>(null);
+  const [implLoading, setImplLoading] = useState(false);
 
   useEffect(() => {
     if (variant !== "chain-inferred") return;
@@ -114,6 +129,34 @@ export function ContractVerifiedPanel({
       c = false;
     };
   }, [variant, verified.address]);
+
+  useEffect(() => {
+    let c = true;
+    setProxyInfo(null);
+    setImplVerified(null);
+    fetchJson<ProxyApi>(`/api/v1/contract/${verified.address}/proxy`)
+      .then(async (p) => {
+        if (!c) return;
+        setProxyInfo(p);
+        if (p.isProxy && p.implementation && p.implementationVerified) {
+          setImplLoading(true);
+          try {
+            const v = await fetchJson<VerifiedForPanel>(`/api/v1/contract/${p.implementation}/verified`);
+            if (c) setImplVerified(v);
+          } catch {
+            if (c) setImplVerified(null);
+          } finally {
+            if (c) setImplLoading(false);
+          }
+        }
+      })
+      .catch(() => {
+        if (c) setProxyInfo(null);
+      });
+    return () => {
+      c = false;
+    };
+  }, [verified.address]);
 
   const fileName = useMemo(() => inferSourceFileName(verified.sourceCode, verified.contractName), [verified]);
 
@@ -140,6 +183,21 @@ export function ContractVerifiedPanel({
     [allFns],
   );
 
+  const implAbi = implVerified?.abi ?? "";
+  const implAllFns = useMemo(() => (implAbi ? listAbiFunctions(implAbi) : []), [implAbi]);
+  const implAbiForEthers = useMemo(() => (implAbi ? getNormalizedAbiJson(implAbi) : "[]"), [implAbi]);
+  const implReadFns = useMemo(
+    () => implAllFns.filter((f) => f.stateMutability === "view" || f.stateMutability === "pure"),
+    [implAllFns],
+  );
+  const implWriteFns = useMemo(
+    () => implAllFns.filter((f) => f.stateMutability === "nonpayable" || f.stateMutability === "payable"),
+    [implAllFns],
+  );
+
+  const isProxy = Boolean(proxyInfo?.isProxy && proxyInfo.implementation);
+  const showProxyTabs = isProxy;
+
   const copyCode = async () => {
     await navigator.clipboard.writeText(verified.sourceCode);
     setCopyFlash(true);
@@ -157,6 +215,24 @@ export function ContractVerifiedPanel({
     : `v${verified.compilerVersion}`;
 
   const isChain = variant === "chain-inferred";
+
+  const mainTabs = useMemo(() => {
+    const base: { id: Tab; label: string }[] = [
+      { id: "code", label: "Code" },
+      { id: "abi", label: "Contract ABI" },
+      { id: "read", label: "Read Contract" },
+      { id: "write", label: "Write Contract" },
+    ];
+    if (showProxyTabs) {
+      base.push(
+        { id: "read-proxy", label: "Read as Proxy" },
+        { id: "write-proxy", label: "Write as Proxy" },
+      );
+    }
+    return base;
+  }, [showProxyTabs]);
+
+  const isInteractTab = tab === "read" || tab === "write" || tab === "read-proxy" || tab === "write-proxy";
 
   return (
     <div className="mt-4 space-y-4">
@@ -191,10 +267,65 @@ export function ContractVerifiedPanel({
                 </span>
               )}
             </div>
-            <p className="text-xs text-emerald-900/85">Code · Read Contract · Write Contract (explorer-standard layout)</p>
+            <p className="text-xs text-emerald-900/85">
+              Code · Read Contract · Write Contract
+              {showProxyTabs ? " · Read as Proxy · Write as Proxy" : ""} (explorer-standard layout)
+            </p>
           </div>
         </div>
       )}
+
+      {isProxy && proxyInfo ? (
+        <div className="rounded-lg border border-violet-200 bg-violet-50/90 px-4 py-3 text-sm text-violet-950">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded bg-violet-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+              Proxy
+            </span>
+            <span className="font-semibold">{proxyInfo.proxyType || "Upgradeable proxy"}</span>
+          </div>
+          <p className="mt-2 text-xs leading-relaxed">
+            This contract delegates calls to an implementation (same pattern as Etherscan / BscScan). Use{" "}
+            <strong>Read as Proxy</strong> / <strong>Write as Proxy</strong> for the implementation ABI against this
+            address.
+          </p>
+          <div className="mt-2 grid gap-1 text-xs sm:grid-cols-2">
+            <div>
+              <span className="text-violet-800/80">Implementation: </span>
+              <Link to={`/address/${proxyInfo.implementation}`} className="break-all font-mono text-brand-700 hover:underline">
+                {proxyInfo.implementation}
+              </Link>
+              {proxyInfo.implementationName ? (
+                <span className="ml-1 text-violet-800">({proxyInfo.implementationName})</span>
+              ) : null}
+              {proxyInfo.implementationVerified ? (
+                <span className="ml-1 rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-800">
+                  Verified
+                </span>
+              ) : (
+                <span className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">
+                  Unverified
+                </span>
+              )}
+            </div>
+            {proxyInfo.admin ? (
+              <div>
+                <span className="text-violet-800/80">Admin: </span>
+                <Link to={`/address/${proxyInfo.admin}`} className="break-all font-mono text-brand-700 hover:underline">
+                  {proxyInfo.admin}
+                </Link>
+              </div>
+            ) : null}
+            {proxyInfo.beacon ? (
+              <div>
+                <span className="text-violet-800/80">Beacon: </span>
+                <Link to={`/address/${proxyInfo.beacon}`} className="break-all font-mono text-brand-700 hover:underline">
+                  {proxyInfo.beacon}
+                </Link>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid gap-3 rounded-lg border border-slate-200 bg-slate-50/90 p-4 text-sm sm:grid-cols-2">
         <Meta label="Contract Name" value={verified.contractName} mono />
@@ -212,7 +343,7 @@ export function ContractVerifiedPanel({
           }
         />
         <Meta label="Optimization Enabled" value={isChain ? "—" : verified.optimization ? `Yes · ${verified.runs} runs` : "No"} />
-        <Meta label="Other Settings" value={isChain ? "RPC / bytecode" : `EVM ${verified.evmVersion ?? "cancun"}`} />
+        <Meta label="Other Settings" value={isChain ? "RPC / bytecode" : `EVM ${verified.evmVersion ?? "london"}`} />
         <Meta label="Open Source License" value={isChain ? "—" : verified.openSourceLicense ?? "—"} />
       </div>
 
@@ -226,19 +357,12 @@ export function ContractVerifiedPanel({
       ) : null}
 
       <div className="flex flex-wrap gap-1 border-b border-slate-200">
-        {(
-          [
-            ["code", "Code"],
-            ["abi", "Contract ABI"],
-            ["read", "Read Contract"],
-            ["write", "Write Contract"],
-          ] as const
-        ).map(([id, label]) => (
+        {mainTabs.map(({ id, label }) => (
           <button
             key={id}
             type="button"
             onClick={() => setTab(id)}
-            className={`shrink-0 whitespace-nowrap rounded-t-md px-2.5 py-2 text-xs font-semibold transition sm:px-4 sm:py-2.5 sm:text-sm ${
+            className={`shrink-0 whitespace-nowrap rounded-t-md px-2.5 py-2 text-xs font-semibold transition sm:px-3 sm:py-2.5 sm:text-sm ${
               tab === id ? "bg-brand-600 text-white shadow-md" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
             }`}
           >
@@ -247,7 +371,7 @@ export function ContractVerifiedPanel({
         ))}
       </div>
 
-      {tab === "read" || tab === "write" ? (
+      {isInteractTab ? (
         <div className="space-y-3">
           <Web3ConnectBar />
           <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-600">
@@ -452,60 +576,42 @@ export function ContractVerifiedPanel({
       ) : null}
 
       {tab === "read" ? (
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-slate-500">
-              Read: <strong>{readFns.length}</strong> · Write: <strong>{writeFns.length}</strong> (from stored ABI)
-            </p>
-            <button
-              type="button"
-              className="rounded border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-              onClick={() => setExpandAllRead((v) => !v)}
-            >
-              {expandAllRead ? "Collapse all" : "+ Expand all"}
-            </button>
-          </div>
-          {readFns.length === 0 ? (
-            <AbiEmptyHint parsedTotal={allFns.length} kind="read" />
-          ) : (
-            readFns.map((fn, idx) => (
-              <AbiReadCard
-                key={`read-${idx}-${functionSignature(fn)}`}
-                index={idx + 1}
-                address={verified.address}
-                abiJson={abiForEthers}
-                fn={fn}
-                rpcUrl={rpcUrl}
-                defaultOpen={expandAllRead || fn.inputs.length === 0}
-              />
-            ))
-          )}
-        </div>
+        <FunctionListSection
+          kind="read"
+          countLabel={`Read: ${readFns.length} · Write: ${writeFns.length} (from stored ABI)`}
+          expandAll={expandAllRead}
+          onToggleExpand={() => setExpandAllRead((v) => !v)}
+          empty={<AbiEmptyHint parsedTotal={allFns.length} kind="read" />}
+        >
+          {readFns.map((fn, idx) => (
+            <AbiReadCard
+              key={`read-${idx}-${functionSignature(fn)}`}
+              index={idx + 1}
+              address={verified.address}
+              abiJson={abiForEthers}
+              fn={fn}
+              rpcUrl={rpcUrl}
+              defaultOpen={expandAllRead}
+            />
+          ))}
+        </FunctionListSection>
       ) : null}
 
       {tab === "write" ? (
         <div className="space-y-3">
           <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-            <strong>Write</strong>: connect with <strong>Connect to Web3</strong> first, then fill parameters and
-            submit — wallet must be on the same chain as{" "}
+            <strong>Write</strong>: connect with <strong>Connect to Web3</strong> first, then expand a function, fill
+            parameters and submit — wallet must be on the same chain as{" "}
             <code className="rounded bg-white px-1">{rpcUrl}</code>.
           </p>
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-slate-500">
-              Write: <strong>{writeFns.length}</strong> function(s)
-            </p>
-            <button
-              type="button"
-              className="rounded border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-              onClick={() => setExpandAllWrite((v) => !v)}
-            >
-              {expandAllWrite ? "Collapse all" : "+ Expand all"}
-            </button>
-          </div>
-          {writeFns.length === 0 ? (
-            <AbiEmptyHint parsedTotal={allFns.length} kind="write" />
-          ) : (
-            writeFns.map((fn, idx) => (
+          <FunctionListSection
+            kind="write"
+            countLabel={`Write: ${writeFns.length} function(s)`}
+            expandAll={expandAllWrite}
+            onToggleExpand={() => setExpandAllWrite((v) => !v)}
+            empty={<AbiEmptyHint parsedTotal={allFns.length} kind="write" />}
+          >
+            {writeFns.map((fn, idx) => (
               <AbiWriteCard
                 key={`write-${idx}-${functionSignature(fn)}`}
                 index={idx + 1}
@@ -514,10 +620,137 @@ export function ContractVerifiedPanel({
                 fn={fn}
                 defaultOpen={expandAllWrite}
               />
-            ))
+            ))}
+          </FunctionListSection>
+        </div>
+      ) : null}
+
+      {tab === "read-proxy" ? (
+        <div className="space-y-3">
+          <p className="rounded-md border border-violet-200 bg-violet-50 px-3 py-2 text-sm text-violet-950">
+            <strong>Read as Proxy</strong>: calls use the <em>implementation</em> ABI against this{" "}
+            <em>proxy</em> address (delegatecall pattern — same as Etherscan).
+          </p>
+          {implLoading ? (
+            <p className="text-sm text-slate-500">Loading implementation ABI…</p>
+          ) : !implVerified ? (
+            <ProxyImplMissing proxyInfo={proxyInfo} />
+          ) : (
+            <FunctionListSection
+              kind="read"
+              countLabel={`Read as Proxy: ${implReadFns.length} function(s) · impl ${proxyInfo?.implementationName || shortHash(proxyInfo?.implementation || "", 8)}`}
+              expandAll={expandAllReadProxy}
+              onToggleExpand={() => setExpandAllReadProxy((v) => !v)}
+              empty={<AbiEmptyHint parsedTotal={implAllFns.length} kind="read" />}
+            >
+              {implReadFns.map((fn, idx) => (
+                <AbiReadCard
+                  key={`rproxy-${idx}-${functionSignature(fn)}`}
+                  index={idx + 1}
+                  address={verified.address}
+                  abiJson={implAbiForEthers}
+                  fn={fn}
+                  rpcUrl={rpcUrl}
+                  defaultOpen={expandAllReadProxy}
+                />
+              ))}
+            </FunctionListSection>
           )}
         </div>
       ) : null}
+
+      {tab === "write-proxy" ? (
+        <div className="space-y-3">
+          <p className="rounded-md border border-violet-200 bg-violet-50 px-3 py-2 text-sm text-violet-950">
+            <strong>Write as Proxy</strong>: connect wallet, expand a function, then submit to the{" "}
+            <em>proxy</em> using the implementation ABI.
+          </p>
+          {implLoading ? (
+            <p className="text-sm text-slate-500">Loading implementation ABI…</p>
+          ) : !implVerified ? (
+            <ProxyImplMissing proxyInfo={proxyInfo} />
+          ) : (
+            <FunctionListSection
+              kind="write"
+              countLabel={`Write as Proxy: ${implWriteFns.length} function(s)`}
+              expandAll={expandAllWriteProxy}
+              onToggleExpand={() => setExpandAllWriteProxy((v) => !v)}
+              empty={<AbiEmptyHint parsedTotal={implAllFns.length} kind="write" />}
+            >
+              {implWriteFns.map((fn, idx) => (
+                <AbiWriteCard
+                  key={`wproxy-${idx}-${functionSignature(fn)}`}
+                  index={idx + 1}
+                  address={verified.address}
+                  abiJson={implAbiForEthers}
+                  fn={fn}
+                  defaultOpen={expandAllWriteProxy}
+                />
+              ))}
+            </FunctionListSection>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function FunctionListSection({
+  kind,
+  countLabel,
+  expandAll,
+  onToggleExpand,
+  empty,
+  children,
+}: {
+  kind: "read" | "write";
+  countLabel: string;
+  expandAll: boolean;
+  onToggleExpand: () => void;
+  empty: ReactNode;
+  children: ReactNode;
+}) {
+  const list = Array.isArray(children) ? children : children != null ? [children] : [];
+  const hasItems = list.filter(Boolean).length > 0;
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-xs text-slate-500">{countLabel}</p>
+        {hasItems ? (
+          <button
+            type="button"
+            className="rounded border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            onClick={onToggleExpand}
+          >
+            {expandAll ? "Collapse all" : "+ Expand all"}
+          </button>
+        ) : null}
+      </div>
+      {!hasItems ? empty : children}
+      {hasItems && kind === "read" ? (
+        <p className="text-[11px] text-slate-500">Functions stay collapsed — expand one (or Expand all) to query.</p>
+      ) : null}
+    </div>
+  );
+}
+
+function ProxyImplMissing({ proxyInfo }: { proxyInfo: ProxyApi | null }) {
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50/90 p-4 text-sm text-amber-950">
+      <p className="font-medium">Implementation contract is not verified</p>
+      <p className="mt-2 text-xs leading-relaxed">
+        Detected proxy
+        {proxyInfo?.proxyType ? ` (${proxyInfo.proxyType})` : ""}, but the implementation ABI is not published yet.
+        Verify the implementation at{" "}
+        {proxyInfo?.implementation ? (
+          <Link to={`/address/${proxyInfo.implementation}`} className="font-mono text-brand-700 underline">
+            {proxyInfo.implementation}
+          </Link>
+        ) : (
+          "the implementation address"
+        )}{" "}
+        to unlock Read as Proxy / Write as Proxy.
+      </p>
     </div>
   );
 }
