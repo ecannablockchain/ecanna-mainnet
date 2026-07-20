@@ -31,18 +31,11 @@ export async function verifyContractHandler(req: Request, res: Response) {
   if (!address || !ethers.isAddress(address)) {
     return res.status(400).json({ status: "0", message: "Invalid address" });
   }
-  if (!sourceCode.trim()) {
-    return res.status(400).json({ status: "0", message: "Missing source code" });
-  }
 
   const existing = await prisma.contractVerification.findUnique({ where: { address } });
-  if (existing) {
-    return res.status(400).json({
-      status: "0",
-      message:
-        "Contract is already verified. Re-verification and source updates are not allowed. Contact support only for critical corrections.",
-    });
-  }
+  const abiOnly =
+    String(body.abiOnly || body.updateAbi || body.ABIOnly || "").trim() === "1" ||
+    String(body.abiOnly || body.updateAbi || "").toLowerCase() === "true";
 
   let abiStr = abiRaw.trim();
   try {
@@ -64,6 +57,32 @@ export async function verifyContractHandler(req: Request, res: Response) {
     abiStr = JSON.stringify(abiArr);
   } catch {
     return res.status(400).json({ status: "0", message: "Invalid ABI JSON" });
+  }
+
+  /** Critical correction: replace stored ABI only (no schema change; source stays locked). */
+  if (existing && abiOnly) {
+    await prisma.contractVerification.update({
+      where: { address },
+      data: { abi: abiStr },
+    });
+    return res.json({
+      status: "1",
+      message: "OK",
+      result: address,
+      updated: "abi",
+    });
+  }
+
+  if (existing) {
+    return res.status(400).json({
+      status: "0",
+      message:
+        "Contract is already verified. Re-verification and source updates are not allowed. To fix a wrong ABI only, resubmit with abiOnly=1 (source unchanged).",
+    });
+  }
+
+  if (!sourceCode.trim()) {
+    return res.status(400).json({ status: "0", message: "Missing source code" });
   }
 
   const creationTxInput = parseOptionalHexField(

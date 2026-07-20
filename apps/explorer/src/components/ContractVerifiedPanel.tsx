@@ -4,6 +4,7 @@ import { BrowserProvider, Contract, JsonRpcProvider, formatUnits } from "ethers"
 import {
   type AbiFunctionJson,
   formatCallResult,
+  functionSelector,
   functionSignature,
   getNormalizedAbiJson,
   inferSourceFileName,
@@ -96,6 +97,8 @@ export function ContractVerifiedPanel({
   const [copyFlash, setCopyFlash] = useState(false);
   const [copyAbiFlash, setCopyAbiFlash] = useState(false);
   const [chainDeployedBytecode, setChainDeployedBytecode] = useState<string | null>(null);
+  const [expandAllRead, setExpandAllRead] = useState(false);
+  const [expandAllWrite, setExpandAllWrite] = useState(false);
 
   useEffect(() => {
     if (variant !== "chain-inferred") return;
@@ -449,25 +452,31 @@ export function ContractVerifiedPanel({
       ) : null}
 
       {tab === "read" ? (
-        <div className="space-y-4">
-          <p className="text-sm text-slate-600">
-            Read-only calls use the public RPC{" "}
-            <code className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">{rpcUrl}</code>. Use{" "}
-            <strong>Connect to Web3</strong> above if you want the same wallet flow as BscScan (optional for read).
-          </p>
-          <p className="text-xs text-slate-500">
-            Parsed <strong>{allFns.length}</strong> function(s) from ABI — Read: {readFns.length}, Write: {writeFns.length}.
-          </p>
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-slate-500">
+              Read: <strong>{readFns.length}</strong> · Write: <strong>{writeFns.length}</strong> (from stored ABI)
+            </p>
+            <button
+              type="button"
+              className="rounded border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              onClick={() => setExpandAllRead((v) => !v)}
+            >
+              {expandAllRead ? "Collapse all" : "+ Expand all"}
+            </button>
+          </div>
           {readFns.length === 0 ? (
             <AbiEmptyHint parsedTotal={allFns.length} kind="read" />
           ) : (
             readFns.map((fn, idx) => (
               <AbiReadCard
                 key={`read-${idx}-${functionSignature(fn)}`}
+                index={idx + 1}
                 address={verified.address}
                 abiJson={abiForEthers}
                 fn={fn}
                 rpcUrl={rpcUrl}
+                defaultOpen={expandAllRead || fn.inputs.length === 0}
               />
             ))
           )}
@@ -475,24 +484,35 @@ export function ContractVerifiedPanel({
       ) : null}
 
       {tab === "write" ? (
-        <div className="space-y-4">
+        <div className="space-y-3">
           <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-950">
-            <strong>Write</strong>: connect with <strong>Connect to Web3</strong> first (BscScan-style), then fill
-            parameters and submit — your wallet must be on the same chain as{" "}
+            <strong>Write</strong>: connect with <strong>Connect to Web3</strong> first, then fill parameters and
+            submit — wallet must be on the same chain as{" "}
             <code className="rounded bg-white px-1">{rpcUrl}</code>.
           </p>
-          <p className="text-xs text-slate-500">
-            Parsed <strong>{allFns.length}</strong> function(s) — Read: {readFns.length}, Write: {writeFns.length}.
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-slate-500">
+              Write: <strong>{writeFns.length}</strong> function(s)
+            </p>
+            <button
+              type="button"
+              className="rounded border border-slate-300 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+              onClick={() => setExpandAllWrite((v) => !v)}
+            >
+              {expandAllWrite ? "Collapse all" : "+ Expand all"}
+            </button>
+          </div>
           {writeFns.length === 0 ? (
             <AbiEmptyHint parsedTotal={allFns.length} kind="write" />
           ) : (
             writeFns.map((fn, idx) => (
               <AbiWriteCard
                 key={`write-${idx}-${functionSignature(fn)}`}
+                index={idx + 1}
                 address={verified.address}
                 abiJson={abiForEthers}
                 fn={fn}
+                defaultOpen={expandAllWrite}
               />
             ))
           )}
@@ -534,20 +554,29 @@ function Meta({ label, value, mono }: { label: string; value: string; mono?: boo
 }
 
 function AbiReadCard({
+  index,
   address,
   abiJson,
   fn,
   rpcUrl,
+  defaultOpen = false,
 }: {
+  index: number;
   address: string;
   abiJson: string;
   fn: AbiFunctionJson;
   rpcUrl: string;
+  defaultOpen?: boolean;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
+  useEffect(() => {
+    setOpen(defaultOpen);
+  }, [defaultOpen]);
   const [values, setValues] = useState<string[]>(() => fn.inputs.map(() => ""));
   const [out, setOut] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const sel = functionSelector(fn);
 
   const run = async () => {
     setLoading(true);
@@ -589,35 +618,47 @@ function AbiReadCard({
   };
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="break-all font-mono text-sm font-semibold leading-snug text-slate-900">{functionSignature(fn)}</div>
-      <div className="mt-3 space-y-2">
-        {fn.inputs.map((inp, i) => (
-          <label key={i} className="block text-xs">
-            <span className="text-slate-500">{(inp.name || `arg${i}`) + ` (${inp.type})`}</span>
-            <input
-              className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 font-mono text-xs"
-              value={values[i]}
-              onChange={(e) => {
-                const next = [...values];
-                next[i] = e.target.value;
-                setValues(next);
-              }}
-              placeholder={inp.type}
-            />
-          </label>
-        ))}
-        <button
-          type="button"
-          disabled={loading}
-          onClick={() => void run()}
-          className="mt-2 rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
-        >
-          {loading ? "Querying…" : "Query"}
-        </button>
-        {err ? <p className="mt-2 text-sm text-red-600">{err}</p> : null}
-        {out ? <pre className="mt-2 max-h-48 overflow-auto rounded bg-slate-900 p-3 text-xs text-emerald-200">{out}</pre> : null}
-      </div>
+    <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left hover:bg-slate-50"
+      >
+        <span className="break-all font-mono text-sm font-semibold text-slate-900">
+          {index}. {fn.name}
+          {sel ? <span className="ml-1 font-normal text-slate-500">({sel})</span> : null}
+        </span>
+        <span className="shrink-0 text-slate-400">{open ? "▾" : "▸"}</span>
+      </button>
+      {open ? (
+        <div className="space-y-2 border-t border-slate-100 px-4 py-3">
+          {fn.inputs.map((inp, i) => (
+            <label key={i} className="block text-xs">
+              <span className="text-slate-500">{(inp.name || `arg${i}`) + ` (${inp.type})`}</span>
+              <input
+                className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 font-mono text-xs"
+                value={values[i]}
+                onChange={(e) => {
+                  const next = [...values];
+                  next[i] = e.target.value;
+                  setValues(next);
+                }}
+                placeholder={inp.type}
+              />
+            </label>
+          ))}
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => void run()}
+            className="mt-1 rounded-md bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+          >
+            {loading ? "Querying…" : "Query"}
+          </button>
+          {err ? <p className="mt-2 text-sm text-red-600">{err}</p> : null}
+          {out ? <pre className="mt-2 max-h-48 overflow-auto rounded bg-slate-900 p-3 text-xs text-emerald-200">{out}</pre> : null}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -635,11 +676,28 @@ type WriteTxUi =
     }
   | { kind: "error"; message: string; hash?: string };
 
-function AbiWriteCard({ address, abiJson, fn }: { address: string; abiJson: string; fn: AbiFunctionJson }) {
+function AbiWriteCard({
+  index,
+  address,
+  abiJson,
+  fn,
+  defaultOpen = false,
+}: {
+  index: number;
+  address: string;
+  abiJson: string;
+  fn: AbiFunctionJson;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  useEffect(() => {
+    setOpen(defaultOpen);
+  }, [defaultOpen]);
   const [values, setValues] = useState<string[]>(() => fn.inputs.map(() => ""));
   const [wei, setWei] = useState("");
   const [txUi, setTxUi] = useState<WriteTxUi>({ kind: "idle" });
   const [loading, setLoading] = useState(false);
+  const sel = functionSelector(fn);
 
   const run = async () => {
     if (!window.ethereum?.request) {
@@ -685,49 +743,60 @@ function AbiWriteCard({ address, abiJson, fn }: { address: string; abiJson: stri
   };
 
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="break-all font-mono text-sm font-semibold leading-snug text-slate-900">{functionSignature(fn)}</div>
-      <div className="mt-3 space-y-2">
-        {fn.stateMutability === "payable" ? (
-          <label className="block text-xs">
-            <span className="text-slate-500">value (wei)</span>
-            <input
-              className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 font-mono text-xs"
-              value={wei}
-              onChange={(e) => setWei(e.target.value)}
-              placeholder="0"
-            />
-          </label>
-        ) : null}
-        {fn.inputs.map((inp, i) => (
-          <label key={i} className="block text-xs">
-            <span className="text-slate-500">{(inp.name || `arg${i}`) + ` (${inp.type})`}</span>
-            <input
-              className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 font-mono text-xs"
-              value={values[i]}
-              onChange={(e) => {
-                const next = [...values];
-                next[i] = e.target.value;
-                setValues(next);
-              }}
-            />
-          </label>
-        ))}
-        <button
-          type="button"
-          disabled={loading}
-          onClick={() => void run()}
-          className="mt-2 rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
-        >
-          {loading ? (txUi.kind === "signing" ? "Confirm in wallet…" : "Confirming…") : "Write"}
-        </button>
+    <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left hover:bg-slate-50"
+      >
+        <span className="break-all font-mono text-sm font-semibold text-slate-900">
+          {index}. {fn.name}
+          {sel ? <span className="ml-1 font-normal text-slate-500">({sel})</span> : null}
+        </span>
+        <span className="shrink-0 text-slate-400">{open ? "▾" : "▸"}</span>
+      </button>
+      {open ? (
+        <div className="space-y-2 border-t border-slate-100 px-4 py-3">
+          {fn.stateMutability === "payable" ? (
+            <label className="block text-xs">
+              <span className="text-slate-500">value (wei)</span>
+              <input
+                className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 font-mono text-xs"
+                value={wei}
+                onChange={(e) => setWei(e.target.value)}
+                placeholder="0"
+              />
+            </label>
+          ) : null}
+          {fn.inputs.map((inp, i) => (
+            <label key={i} className="block text-xs">
+              <span className="text-slate-500">{(inp.name || `arg${i}`) + ` (${inp.type})`}</span>
+              <input
+                className="mt-1 w-full rounded border border-slate-300 px-2 py-1.5 font-mono text-xs"
+                value={values[i]}
+                onChange={(e) => {
+                  const next = [...values];
+                  next[i] = e.target.value;
+                  setValues(next);
+                }}
+              />
+            </label>
+          ))}
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => void run()}
+            className="mt-1 rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-50"
+          >
+            {loading ? (txUi.kind === "signing" ? "Confirm in wallet…" : "Confirming…") : "Write"}
+          </button>
 
-        {txUi.kind === "signing" ? (
-          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
-            <strong>Waiting for wallet</strong>
-            <p className="mt-1 text-xs opacity-90">Approve or sign this transaction in MetaMask (or your connected wallet).</p>
-          </div>
-        ) : null}
+          {txUi.kind === "signing" ? (
+            <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
+              <strong>Waiting for wallet</strong>
+              <p className="mt-1 text-xs opacity-90">Approve or sign this transaction in MetaMask (or your connected wallet).</p>
+            </div>
+          ) : null}
 
         {txUi.kind === "pending" ? (
           <div className="mt-3 space-y-2 rounded-lg border border-sky-200 bg-sky-50 px-3 py-3 text-sm text-sky-950 shadow-sm">
@@ -795,7 +864,8 @@ function AbiWriteCard({ address, abiJson, fn }: { address: string; abiJson: stri
             ) : null}
           </div>
         ) : null}
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }

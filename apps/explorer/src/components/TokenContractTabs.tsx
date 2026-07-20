@@ -169,27 +169,30 @@ export function TokenContractTabs({
     setXfers([]);
     setHolders(null);
     setHoldersErr(null);
-    Promise.all([
-      fetchJson<TokenInfo>(`/api/v1/tokens/${a}/info`),
-      fetchJson<{ items: TokenXferApi[] }>(`/api/v1/tokens/transfers?token=${encodeURIComponent(a)}&limit=50&offset=0`),
-      fetchJson<HoldersRes>(`/api/v1/tokens/${a}/holders?limit=50&offset=0`).catch((e: Error) => {
-        setHoldersErr(e.message);
-        return null;
-      }),
-      fetchJson<{ profile: TokenProfile | null }>(`/api/v1/contract/${a}/token-profile`).catch(() => ({
-        profile: null,
-      })),
-    ])
-      .then(([i, x, h, prof]) => {
-        setInfo(i);
-        setXfers(x.items ?? []);
-        setTokenProfile(prof.profile ?? null);
-        if (h) {
-          setHolders(h);
-          setHoldersErr(null);
-        }
-      })
-      .catch((e: Error) => setLoadErr(e.message));
+    void (async () => {
+      const settled = await Promise.allSettled([
+        fetchJson<TokenInfo>(`/api/v1/tokens/${a}/info`),
+        fetchJson<{ items: TokenXferApi[] }>(
+          `/api/v1/tokens/transfers?token=${encodeURIComponent(a)}&limit=50&offset=0`,
+        ),
+        fetchJson<HoldersRes>(`/api/v1/tokens/${a}/holders?limit=50&offset=0`),
+        fetchJson<{ profile: TokenProfile | null }>(`/api/v1/contract/${a}/token-profile`),
+      ]);
+      const infoR = settled[0];
+      const xferR = settled[1];
+      const holdR = settled[2];
+      const profR = settled[3];
+      if (infoR.status === "fulfilled") setInfo(infoR.value);
+      else setLoadErr(infoR.reason instanceof Error ? infoR.reason.message : "Token info unavailable");
+      if (xferR.status === "fulfilled") setXfers(xferR.value.items ?? []);
+      if (holdR.status === "fulfilled") {
+        setHolders(holdR.value);
+        setHoldersErr(null);
+      } else {
+        setHoldersErr(holdR.reason instanceof Error ? holdR.reason.message : "Holders unavailable");
+      }
+      if (profR.status === "fulfilled") setTokenProfile(profR.value.profile ?? null);
+    })();
   }, [tokenAddress]);
 
   const sym =
@@ -324,67 +327,101 @@ export function TokenContractTabs({
           </div>
         </div>
 
-        {loadErr ? (
-          <p className="mt-4 text-sm text-red-600">{loadErr}</p>
-        ) : (
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-            <div
-              className="rounded-lg border px-3 py-3 shadow-sm"
-              style={{ borderColor: "var(--card-border)", background: "var(--card-bg)" }}
-            >
-              <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--card-muted)" }}>
-                Total supply
+        {loadErr && !info ? (
+          <p className="mt-4 text-sm text-amber-800">
+            Some token stats are temporarily unavailable. Contract tabs below still work.
+          </p>
+        ) : null}
+
+        <div className="mt-6 grid gap-3 lg:grid-cols-3">
+          {/* Overview — Etherscan-style */}
+          <div
+            className="rounded-lg border px-4 py-4 shadow-sm"
+            style={{ borderColor: "var(--card-border)", background: "var(--card-bg)" }}
+          >
+            <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Overview</div>
+            <div className="mt-3 space-y-3">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Max Total Supply</div>
+                <div className="mt-0.5 break-all font-mono text-sm font-semibold tabular-nums" style={{ color: "var(--card-heading)" }}>
+                  {info?.totalSupply != null ? amountFmt(info.totalSupply) : "—"}
+                </div>
               </div>
-              <div className="mt-1 font-mono text-sm font-semibold tabular-nums" style={{ color: "var(--card-heading)" }}>
-                {info?.totalSupply != null ? amountFmt(info.totalSupply) : "—"}
+              <div className="border-t pt-3" style={{ borderColor: "var(--card-border)" }}>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Holders</div>
+                <div className="mt-0.5 font-mono text-sm font-semibold tabular-nums" style={{ color: "var(--card-heading)" }}>
+                  {holdersErr ? "—" : holders ? holders.total.toLocaleString() : "…"}
+                </div>
               </div>
-            </div>
-            <div
-              className="rounded-lg border px-3 py-3 shadow-sm"
-              style={{ borderColor: "var(--card-border)", background: "var(--card-bg)" }}
-            >
-              <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--card-muted)" }}>
-                Holders
-              </div>
-              <div className="mt-1 font-mono text-sm font-semibold tabular-nums" style={{ color: "var(--card-heading)" }}>
-                {holdersErr ? "—" : holders ? holders.total.toLocaleString() : "…"}
-              </div>
-            </div>
-            <div
-              className="rounded-lg border px-3 py-3 shadow-sm"
-              style={{ borderColor: "var(--card-border)", background: "var(--card-bg)" }}
-            >
-              <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--card-muted)" }}>
-                Transfers
-              </div>
-              <div className="mt-1 font-mono text-sm font-semibold tabular-nums" style={{ color: "var(--card-heading)" }}>
-                {info ? info.indexedTransfers.toLocaleString() : "…"}
-              </div>
-            </div>
-            <div
-              className="rounded-lg border px-3 py-3 shadow-sm"
-              style={{ borderColor: "var(--card-border)", background: "var(--card-bg)" }}
-            >
-              <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--card-muted)" }}>
-                Decimals
-              </div>
-              <div className="mt-1 font-mono text-sm font-semibold tabular-nums" style={{ color: "var(--card-heading)" }}>
-                {info?.decimals ?? "—"}
-              </div>
-            </div>
-            <div
-              className="rounded-lg border px-3 py-3 shadow-sm sm:col-span-2 lg:col-span-1"
-              style={{ borderColor: "var(--card-border)", background: "var(--card-bg)" }}
-            >
-              <div className="text-[10px] font-bold uppercase tracking-wide" style={{ color: "var(--card-muted)" }}>
-                Contract {nativeSymbol} balance
-              </div>
-              <div className="mt-1 font-mono text-sm font-semibold tabular-nums" style={{ color: "var(--card-heading)" }}>
-                {fmtNative(nativeBalanceWei, nativeSymbol)}
+              <div className="border-t pt-3" style={{ borderColor: "var(--card-border)" }}>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Transfers</div>
+                <div className="mt-0.5 font-mono text-sm font-semibold tabular-nums" style={{ color: "var(--card-heading)" }}>
+                  {info ? info.indexedTransfers.toLocaleString() : "…"}
+                </div>
               </div>
             </div>
           </div>
-        )}
+
+          {/* Other Info */}
+          <div
+            className="rounded-lg border px-4 py-4 shadow-sm"
+            style={{ borderColor: "var(--card-border)", background: "var(--card-bg)" }}
+          >
+            <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Other Info</div>
+            <div className="mt-3 space-y-3">
+              <div>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Token Contract</div>
+                <div className="mt-1">
+                  <CopyTokenAddress address={tokenAddress} />
+                </div>
+                <p className="mt-1 text-xs text-slate-500">
+                  WITH <strong>{info?.decimals ?? "—"}</strong> DECIMALS
+                </p>
+              </div>
+              <div className="border-t pt-3" style={{ borderColor: "var(--card-border)" }}>
+                <div className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+                  Contract {nativeSymbol} balance
+                </div>
+                <div className="mt-0.5 font-mono text-sm font-semibold" style={{ color: "var(--card-heading)" }}>
+                  {fmtNative(nativeBalanceWei, nativeSymbol)}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Profile / status */}
+          <div
+            className="rounded-lg border px-4 py-4 shadow-sm"
+            style={{ borderColor: "var(--card-border)", background: "var(--card-bg)" }}
+          >
+            <div className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Token Profile</div>
+            <div className="mt-3 space-y-2 text-sm" style={{ color: "var(--card-heading)" }}>
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded border border-sky-200 bg-sky-50 px-2 py-0.5 text-[10px] font-bold uppercase text-sky-800">
+                  {token20Label(nativeSymbol)}
+                </span>
+                {contractVerified ? (
+                  <span className="rounded border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-800">
+                    Source Code
+                  </span>
+                ) : (
+                  <span className="rounded border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-900">
+                    Unverified
+                  </span>
+                )}
+              </div>
+              <p className="text-xs leading-relaxed text-slate-600">
+                {tokenProfile?.description ||
+                  "On-chain token details from RPC + indexed Transfer events. No off-chain market price feed."}
+              </p>
+              {tokenProfile?.websiteUrl ? (
+                <a href={tokenProfile.websiteUrl} target="_blank" rel="noreferrer" className="text-xs text-brand-600 hover:underline">
+                  {tokenProfile.websiteUrl.replace(/^https?:\/\//, "")}
+                </a>
+              ) : null}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div

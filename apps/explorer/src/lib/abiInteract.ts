@@ -24,9 +24,40 @@ export function parseAbiToArray(abiJson: string): unknown[] {
   }
 }
 
+/**
+ * Normalize legacy ABI entries that only set `constant` / `payable`
+ * (common in older explorer pastes) into modern `stateMutability`.
+ * Also drops malformed items so ethers.Contract does not throw.
+ */
+export function normalizeAbiItems(items: unknown[]): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = [];
+  for (const item of items) {
+    if (!item || typeof item !== "object") continue;
+    const raw = { ...(item as Record<string, unknown>) };
+    const t = typeof raw.type === "string" ? raw.type : "";
+    if (t === "function") {
+      let sm =
+        typeof raw.stateMutability === "string" ? raw.stateMutability.trim().toLowerCase() : "";
+      if (!sm) {
+        if (raw.constant === true) sm = "view";
+        else if (raw.payable === true) sm = "payable";
+        else sm = "nonpayable";
+      }
+      raw.stateMutability = sm;
+      raw.constant = sm === "view" || sm === "pure";
+      raw.payable = sm === "payable";
+      if (typeof raw.name !== "string" || !raw.name) continue;
+      if (!Array.isArray(raw.inputs)) raw.inputs = [];
+      if (!Array.isArray(raw.outputs)) raw.outputs = [];
+    }
+    out.push(raw);
+  }
+  return out;
+}
+
 /** Stringify ABI array only — required for `new Contract(..., abi)` when users paste full artifact JSON. */
 export function getNormalizedAbiJson(abiJson: string): string {
-  return JSON.stringify(parseAbiToArray(abiJson));
+  return JSON.stringify(normalizeAbiItems(parseAbiToArray(abiJson)));
 }
 
 function normalizeFunctionItem(raw: Record<string, unknown>): AbiFunctionJson | null {
@@ -36,6 +67,14 @@ function normalizeFunctionItem(raw: Record<string, unknown>): AbiFunctionJson | 
     ? (inputsRaw as { name?: string; type?: string }[]).map((i, idx) => ({
         name: typeof i.name === "string" && i.name ? i.name : `arg${idx}`,
         type: typeof i.type === "string" ? i.type : "bytes32",
+      }))
+    : [];
+
+  const outputsRaw = raw.outputs;
+  const outputs: AbiFunctionJson["outputs"] = Array.isArray(outputsRaw)
+    ? (outputsRaw as { name?: string; type?: string }[]).map((o, idx) => ({
+        name: typeof o.name === "string" && o.name ? o.name : `out${idx}`,
+        type: typeof o.type === "string" ? o.type : "bytes32",
       }))
     : [];
 
@@ -50,16 +89,16 @@ function normalizeFunctionItem(raw: Record<string, unknown>): AbiFunctionJson | 
     type: "function",
     name: raw.name,
     inputs,
+    outputs,
     stateMutability: sm,
   };
 }
 
 export function listAbiFunctions(abiJson: string): AbiFunctionJson[] {
-  const abi = parseAbiToArray(abiJson);
+  const abi = normalizeAbiItems(parseAbiToArray(abiJson));
   const out: AbiFunctionJson[] = [];
   for (const item of abi) {
-    if (!item || typeof item !== "object") continue;
-    const fn = normalizeFunctionItem(item as Record<string, unknown>);
+    const fn = normalizeFunctionItem(item);
     if (fn) out.push(fn);
   }
   return out;
@@ -67,6 +106,15 @@ export function listAbiFunctions(abiJson: string): AbiFunctionJson[] {
 
 export function functionSignature(fn: AbiFunctionJson): string {
   return `${fn.name}(${fn.inputs.map((i) => i.type).join(",")})`;
+}
+
+/** 4-byte selector like Etherscan: `0x70a08231` */
+export function functionSelector(fn: AbiFunctionJson): string {
+  try {
+    return ethers.id(functionSignature(fn)).slice(0, 10);
+  } catch {
+    return "";
+  }
 }
 
 /** Parse one argument from explorer text field → ethers call value */
@@ -100,7 +148,7 @@ export function parseAbiValue(type: string, raw: string): unknown {
     if (!v) return [];
     const arr = JSON.parse(v) as unknown[];
     if (!Array.isArray(arr)) throw new Error("Expected JSON array");
-    return arr.map((x, i) => parseAbiValue(inner, String(x)));
+    return arr.map((x) => parseAbiValue(inner, String(x)));
   }
   if (t.startsWith("tuple") || t.includes("tuple")) {
     if (!v) throw new Error("tuple: paste JSON object/array");
